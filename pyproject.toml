@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pattern_causality_py"
+version = "0.1.0"
+dependencies = [
+  "pandas",
+  "numpy",
+  "scipy",
+  "scikit-learn"
+]
+requires-python = ">=3.9"
+authors = [
+  { name="Stavros Stavroglou", email="stavros.k.stavroglou@gmail.com" },
+  { name="Athanasios Pantelous", email="Athanasios.Pantelous@monash.edu" },
+  { name="Hui Wang, email="huiw1128@gmail.com"}
+]
+description = "Pattern Causality Algorithm"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["causality inference", "nonlinear system", "pattern causality"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/skstavroglou/pattern_causality_py"
