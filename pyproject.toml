@@ -1,36 +1,49 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = [
+    "setuptools>=45",
+    "wheel",
+    "numpy>=1.19.0",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pattern_causality_py"
-version = "0.1.0"
-dependencies = [
-  "pandas",
-  "numpy",
-  "scipy",
-  "scikit-learn"
-]
-requires-python = ">=3.9"
-authors = [
-  { name="Stavros Stavroglou", email="stavros.k.stavroglou@gmail.com" },
-  { name="Athanasios Pantelous", email="Athanasios.Pantelous@monash.edu" },
-  { name="Hui Wang, email="huiw1128@gmail.com"}
-]
-description = "Pattern Causality Algorithm"
+name = "pattern_causality"
+version = "0.0.1"
+description = "Pattern Causality Algorithm in Python"
 readme = "README.md"
-license = {file = "LICENSE"}
-keywords = ["causality inference", "nonlinear system", "pattern causality"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+requires-python = ">=3.2"
+license = {text = "BSD License"}
+authors = [
+    {name = "Stavros Stavroglou", email = "stavros.k.stavroglou@gmail.com"},
+    {name = "Athanasios Pantelous", email = "Athanasios.Pantelous@monash.edu"},
+    {name = "Hui Wang", email = "huiw1128@gmail.com"},
+]
+maintainers = [
+    {name = "Hui Wang", email = "huiw1128@gmail.com"},
+]
+dependencies = [
+    "numpy",
+    "pandas",
 ]
 
 [project.urls]
-Homepage = "https://github.com/skstavroglou/pattern_causality_py"
+Homepage = "https://github.com/wanghui5801/pattern_causality_py"
+Repository = "https://github.com/wanghui5801/pattern_causality_py.git"
+Documentation = "https://github.com/wanghui5801/pattern_causality_py#readme"
+
+[tool.setuptools]
+packages = ["pattern_causality"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=pattern_causality"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=4.0",
+]
