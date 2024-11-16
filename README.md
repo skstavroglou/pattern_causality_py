@@ -1,9 +1,9 @@
 # pattern_causality_py
 
 [![PyPI version](https://img.shields.io/pypi/v/pattern-causality.svg)](https://badge.fury.io/py/pattern-causality)
-[![Tests](https://github.com/wanghui5801/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/wanghui5801/pattern_causality_py/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](https://github.com/wanghui5801/pattern_causality_py)
-[![License](https://img.shields.io/pypi/l/pattern-causality.svg)](https://github.com/wanghui5801/pattern_causality_py/blob/main/LICENSE)
+[![Tests](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](https://github.com/skstavroglou/pattern_causality_py)
+[![License](https://img.shields.io/pypi/l/pattern-causality.svg)](https://github.com/skstavroglou/pattern_causality_py/blob/main/LICENSE)
 
 `pattern_causality` is a powerful Python library implementing the Pattern Causality algorithm for analyzing causal relationships in time series data. This package provides efficient tools for detecting and quantifying causality patterns between multiple time series, with particular emphasis on nonlinear complex systems.
 
@@ -28,7 +28,7 @@ pip install pattern-causality
 For the latest development version, you can install directly from GitHub:
 
 ```bash
-pip install git+https://github.com/wanghui5801/pattern_causality_py.git
+pip install git+https://github.com/skstavroglou/pattern_causality_py.git
 ```
 
 ## Quick Start Guide
