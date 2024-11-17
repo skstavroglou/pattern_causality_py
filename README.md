@@ -4,37 +4,38 @@
 [![Tests](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml)
 [![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](https://github.com/skstavroglou/pattern_causality_py)
 [![License](https://img.shields.io/pypi/l/pattern-causality.svg)](https://github.com/skstavroglou/pattern_causality_py/blob/main/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Python Versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-blue)](https://pypi.org/project/pattern-causality/)
 
-`pattern_causality` is a powerful Python library implementing the Pattern Causality algorithm for analyzing causal relationships in time series data. This package provides efficient tools for detecting and quantifying causality patterns between multiple time series, with particular emphasis on nonlinear complex systems.
+## Overview
+
+`pattern_causality` is a comprehensive Python library that implements the Pattern Causality algorithm for analyzing causal relationships in time series data. This package provides efficient tools for detecting and quantifying causality patterns between multiple time series, with a particular focus on nonlinear complex systems.
 
 ## Key Features
 
-- **Lightweight Analysis**: Fast causality detection between pairs of time series
-- **Parameter Optimization**: Automated search for optimal embedding parameters
-- **Cross-validation Support**: Robust validation of causality results
-- **Matrix Analysis**: Efficient computation of causality matrices for multiple time series
-- **Effect Analysis**: Advanced tools for analyzing causal effects in complex systems
+- **Efficient Causality Detection**: Robust analysis of causal relationships between pairs of time series
+- **Parameter Optimization**: Automated identification of optimal embedding parameters
+- **Cross-validation Support**: Statistical validation of causality results
+- **Matrix Analysis**: Comprehensive computation of causality matrices for multiple time series
+- **Effect Analysis**: Sophisticated tools for analyzing causal effects in complex systems
 
 ## Installation
 
-### Using pip (Recommended)
-The easiest way to install the package is via pip:
-
+### Via pip (Recommended)
 ```bash
 pip install pattern-causality
 ```
 
 ### From Source
-For the latest development version, you can install directly from GitHub:
-
+For the latest development version:
 ```bash
 pip install git+https://github.com/skstavroglou/pattern_causality_py.git
 ```
 
-## Quick Start Guide
+## Usage Guide
 
-### Loading Sample Data
-The package comes with a built-in climate indices dataset for testing and demonstration:
+### Loading Data
+The package includes a pre-processed climate indices dataset for demonstration:
 
 ```python
 from pattern_causality import load_data
@@ -45,77 +46,74 @@ print("Available climate indices:", data.columns.tolist())
 ```
 
 ### Basic Causality Analysis
-Perform a basic causality analysis between two time series using the lightweight implementation:
+Perform causality analysis between two time series:
 
 ```python
 from pattern_causality import pc_lightweight
 
-# Load data
+# Prepare data
 data = load_data()
-
-# Example using two climate indices
 X = data['NAO'].values  # North Atlantic Oscillation
 Y = data['AAO'].values  # Arctic Oscillation
 
-# Run lightweight pattern causality analysis
-# Parameters:
-# - E: embedding dimension
-# - tau: time delay
-# - h: prediction horizon
-# - metric: distance metric, default is "euclidean"
-# - weighted: whether to use weighted causality, default is True
-result = pc_lightweight(X=X, Y=Y, E=3, tau=1, h=1)
-print("Causality strength:\n", result)
+# Perform pattern causality analysis
+result = pc_lightweight(
+    X=X, 
+    Y=Y, 
+    E=3,          # embedding dimension
+    tau=1,        # time delay
+    h=1,          # prediction horizon
+    metric="euclidean",  # distance metric
+    weighted=True        # use weighted causality
+)
+print("Causality Analysis Results:\n", result)
 ```
 
+The `weighted` parameter determines the causality strength calculation method:
+- `weighted=True`: Utilizes the error function (erf) to normalize causality strength
+- `weighted=False`: Uses binary causality strength (1 for presence, 0 for absence)
+
 ### Parameter Optimization
-Find the optimal parameters for your specific dataset:
+Identify optimal parameters for your dataset:
 
 ```python
 from pattern_causality import optimal_parameters_search
 
 data = load_data()
-# Search for best parameters up to Emax and tau_max
 result = optimal_parameters_search(
-    Emax=5, 
-    tau_max=5, 
-    metric="euclidean", 
+    Emax=5,       # maximum embedding dimension
+    tau_max=5,    # maximum time delay
+    metric="euclidean",
     dataset=data.drop(columns=['Date'])
 )
-print("Optimal parameters:\n", result)
+print("Optimal Parameters:\n", result)
 ```
 
 ### Cross-Validation Analysis
-Validate your causality results using different sample sizes:
+Validate causality results across different sample sizes:
 
 ```python
 from pattern_causality import pc_cross_validation
 
-data = load_data()
-X = data['NAO'].values
-Y = data['AAO'].values
-
-# Perform cross-validation with different sample sizes
-cv_results = pc_cross_validation(
-    X=X,
-    Y=Y,
+result = pc_cross_validation(
+    X=data['NAO'].values,
+    Y=data['AAO'].values,
     E=3,
     tau=1,
     metric="euclidean",
     h=1,
     weighted=True,
-    numberset=[100, 200, 300, 400, 500]  # Different sample sizes
+    numberset=[100, 200, 300, 400, 500]  # sample sizes
 )
-print("Cross-validation results:\n", cv_results)
+print("Cross-validation Results:\n", result)
 ```
 
 ### Multi-Series Analysis
-Analyze causality patterns between multiple time series simultaneously:
+Analyze causality patterns across multiple time series:
 
 ```python
 from pattern_causality import pc_matrix
 
-data = load_data()
 results = pc_matrix(
     dataset=data.drop(columns=['Date']),
     E=3,
@@ -127,20 +125,19 @@ results = pc_matrix(
 
 print("Pattern Causality Matrix Results:")
 print("Positive causality matrix:", results['positive'])
-print("\nNegative causality matrix:", results['negative'])
-print("\nDark causality matrix:", results['dark'])
-print("\nVariable names:", results['items'])
+print("Negative causality matrix:", results['negative'])
+print("Dark causality matrix:", results['dark'])
+print("Variable names:", results['items'])
 ```
 
 ### Effect Analysis
-Calculate and analyze the causal effects between different time series:
+Analyze causal effects between time series:
 
 ```python
 from pattern_causality import pc_matrix, pc_effect
 
-# Load data and calculate pc_matrix
-data = load_data()
-pc_matrix_results = pc_matrix(
+# Calculate causality matrix
+matrix_results = pc_matrix(
     dataset=data.drop(columns=['Date']),
     E=3,
     tau=1,
@@ -149,40 +146,43 @@ pc_matrix_results = pc_matrix(
     weighted=True
 )
 
-# Calculate effects
-effects = pc_effect(pc_matrix_results)
-print("Pattern Causality Effects:")
-print("\nPositive effects:", effects['positive'])
-print("\nNegative effects:", effects['negative'])
-print("\nDark effects:", effects['dark'])
+# Analyze effects
+effects = pc_effect(matrix_results)
+print("Causal Effects Analysis:")
+print("Positive effects:", effects['positive'])
+print("Negative effects:", effects['negative'])
+print("Dark effects:", effects['dark'])
 ```
+
 ## Testing
 
-This package includes a comprehensive test suite. To run the tests:
+The package includes comprehensive test coverage:
 
 ```bash
-## Install test dependencies
+# Install test dependencies
 pip install pytest pytest-cov
-## Run tests
+
+# Run tests
 python -m pytest tests/
-## Run tests with coverage report
+
+# Run tests with coverage report
 python -m pytest tests/ --cov=pattern_causality
 ```
-
-
-### Test Coverage
-
-The test suite covers:
-- Basic functionality tests
-- Advanced functionality tests
-- Utility function tests
 
 Current test coverage: 79%
 
 ## Contributing
-We welcome contributions! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-## Development
+We welcome contributions! Please follow these steps:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Submit a pull request
+
+For major changes, please open an issue first to discuss proposed modifications.
+
+## Development Setup
 
 1. Clone the repository
 2. Install development dependencies:
@@ -209,4 +209,5 @@ We welcome contributions! Please feel free to submit a Pull Request. For major c
   methodology: The case of coronavirus. _Risk Analysis, 41(5)_, 814-830.
 
 ## License
+
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.

@@ -60,17 +60,14 @@ static PyObject* calculate_pattern_array(PyArrayObject* array) {
 static PyObject* predictionY(PyObject* self, PyObject* args, PyObject* kwargs) {
     long E;
     PyObject* projNNy;
-    PyObject* weighted_obj;
     PyObject* zeroTolerance_obj = Py_None;
     
-    static char* kwlist[] = {"E", "projNNy", "weighted", "zeroTolerance", NULL};
+    static char* kwlist[] = {"E", "projNNy", "zeroTolerance", NULL};
     
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "lOO|O", kwlist, 
-                                    &E, &projNNy, &weighted_obj, &zeroTolerance_obj)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "lO|O", kwlist, 
+                                    &E, &projNNy, &zeroTolerance_obj)) {
         return NULL;
     }
-
-    bool weighted = PyObject_IsTrue(weighted_obj);
 
     double zeroTolerance;
     if (zeroTolerance_obj == Py_None) {
@@ -117,7 +114,7 @@ static PyObject* predictionY(PyObject* self, PyObject* args, PyObject* kwargs) {
         for(long part = 0; part < E - 1; part++) {
             double zeros_count = 0;
             for(npy_intp i = 0; i < sig_dims[0]; i++) {
-                if(fabs(sig_data[i * sig_dims[1] + part]) < 1e-10) {
+                if(sig_data[i * sig_dims[1] + part] == 0.0) {
                     zeros_count += 1.0;
                 }
             }
@@ -126,17 +123,8 @@ static PyObject* predictionY(PyObject* self, PyObject* args, PyObject* kwargs) {
                 predSig_data[part] = 0.0;
             } else {
                 double sum = 0.0;
-                if(weighted) {
-                    // Use weighted calculation
-                    for(npy_intp i = 0; i < sig_dims[0]; i++) {
-                        sum += sig_data[i * sig_dims[1] + part] * weights_data[i];
-                    }
-                } else {
-                    // Use unweighted calculation - simple average
-                    for(npy_intp i = 0; i < sig_dims[0]; i++) {
-                        sum += sig_data[i * sig_dims[1] + part];
-                    }
-                    sum /= sig_dims[0];  // Take average
+                for(npy_intp i = 0; i < sig_dims[0]; i++) {
+                    sum += sig_data[i * sig_dims[1] + part] * weights_data[i];
                 }
                 predSig_data[part] = sum;
             }
@@ -166,17 +154,8 @@ static PyObject* predictionY(PyObject* self, PyObject* args, PyObject* kwargs) {
             predSig_data[0] = 0.0;
         } else {
             double sum = 0.0;
-            if(weighted) {
-                // Use weighted calculation
-                for(npy_intp i = 0; i < total_elements; i++) {
-                    sum += sig_data[i] * weights_data[i];
-                }
-            } else {
-                // Use unweighted calculation - simple average
-                for(npy_intp i = 0; i < total_elements; i++) {
-                    sum += sig_data[i];
-                }
-                sum /= total_elements;  // Take average
+            for(npy_intp i = 0; i < total_elements; i++) {
+                sum += sig_data[i] * weights_data[i];
             }
             predSig_data[0] = sum;
         }

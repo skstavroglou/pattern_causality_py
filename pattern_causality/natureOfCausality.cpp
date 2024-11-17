@@ -4,10 +4,13 @@
 
 static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
     PyArrayObject *PC, *dur, *hashedpatterns, *X;
+    PyObject* weighted_obj;
 
-    if (!PyArg_ParseTuple(args, "OOOO", &PC, &dur, &hashedpatterns, &X)) {
+    if (!PyArg_ParseTuple(args, "OOOOO", &PC, &dur, &hashedpatterns, &X, &weighted_obj)) {
         return NULL;
     }
+
+    bool weighted = PyObject_IsTrue(weighted_obj);
 
     // Convert inputs to numpy arrays
     PyArrayObject* pc_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)PC, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
@@ -53,6 +56,7 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
     long* dur_data = (long*)PyArray_DATA(dur_arr);
     npy_intp dur_size = PyArray_SIZE(dur_arr);
     npy_intp hashed_size = PyArray_SIZE(hashed_arr);
+    npy_intp mean_pattern = hashed_size / 2;  // Calculate mean pattern index
 
     // Get dimensions of PC array
     npy_intp* pc_dims = PyArray_DIMS(pc_arr);
@@ -63,6 +67,7 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
         // Find first non-NaN cell in PC[:,:,i]
         bool found = false;
         npy_intp cell_row = 0, cell_col = 0;
+        double pc_val = 0.0;
         
         for (npy_intp row = 0; row < pc_dims[0] && !found; row++) {
             for (npy_intp col = 0; col < pc_dims[1] && !found; col++) {
@@ -72,69 +77,60 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
                 if (!isnan(value)) {
                     cell_row = row;
                     cell_col = col;
+                    pc_val = value;
                     found = true;
-                    
-                    // POSITIVE CAUSALITY
-                    if (cell_row == cell_col) {
-                        if (cell_row != (hashed_size-1)/2) {
-                            if (value == 0) {
-                                no_data[i] = 1;
-                                pos_data[i] = 0;
-                            } else {
-                                pos_data[i] = 1;
-                                no_data[i] = 0;
-                            }
-                            neg_data[i] = 0;
-                            dark_data[i] = 0;
-                        } else {  // Center of PC matrix
-                            if (value == 0) {
-                                no_data[i] = 1;
-                                dark_data[i] = 0;
-                            } else {
-                                no_data[i] = 0;
-                                dark_data[i] = 1;
-                            }
-                            neg_data[i] = 0;
-                            pos_data[i] = 0;
-                        }
-                    }
-                    // NEGATIVE CAUSALITY
-                    else if ((cell_row + cell_col) == (hashed_size - 1)) {
-                        if (cell_row != (hashed_size-1)/2) {
-                            if (value == 0) {
-                                no_data[i] = 1;
-                                neg_data[i] = 0;
-                            } else {
-                                no_data[i] = 0;
-                                neg_data[i] = 1;
-                            }
-                            pos_data[i] = 0;
-                            dark_data[i] = 0;
-                        } else {
-                            if (value == 0) {
-                                no_data[i] = 1;
-                                dark_data[i] = 0;
-                            } else {
-                                no_data[i] = 0;
-                                dark_data[i] = 1;
-                            }
-                            neg_data[i] = 0;
-                            pos_data[i] = 0;
-                        }
-                    }
-                    // DARK CAUSALITY
-                    else {
-                        if (value == 0) {
-                            no_data[i] = 1;
-                            dark_data[i] = 0;
-                        } else {
-                            no_data[i] = 0;
-                            dark_data[i] = 1;
-                        }
-                        neg_data[i] = 0;
-                        pos_data[i] = 0;
-                    }
                 }
+            }
+        }
+        
+        if (found) {
+            // Positive causality
+            if (cell_row == cell_col) {
+                if (cell_row != mean_pattern) {
+                    if (pc_val == 0) {
+                        no_data[i] = 1;
+                        pos_data[i] = 0;
+                    } else {
+                        no_data[i] = 0;
+                        pos_data[i] = weighted ? pc_val : 1;
+                    }
+                    neg_data[i] = 0;
+                    dark_data[i] = 0;
+                } else {  // Center of PC matrix
+                    if (pc_val == 0) {
+                        no_data[i] = 1;
+                        dark_data[i] = 0;
+                    } else {
+                        no_data[i] = 0;
+                        dark_data[i] = weighted ? pc_val : 1;
+                    }
+                    neg_data[i] = 0;
+                    pos_data[i] = 0;
+                }
+            }
+            // Negative causality
+            else if ((cell_row + cell_col) == (hashed_size - 1)) {
+                if (pc_val == 0) {
+                    no_data[i] = 1;
+                    neg_data[i] = 0;
+                } else {
+                    no_data[i] = 0;
+                    neg_data[i] = weighted ? pc_val : 1;
+                }
+                pos_data[i] = 0;
+                dark_data[i] = 0;
+            }
+            // Dark causality
+            else {
+                if (pc_val == 0) {
+                    no_data[i] = 1;
+                    dark_data[i] = 0;
+                } else {
+                    no_data[i] = 0;
+                    dark_data[i] = weighted ? pc_val : 1;
+                }
+                neg_data[i] = 0;
+                pos_data[i] = 0;
             }
         }
     }

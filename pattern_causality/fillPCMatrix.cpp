@@ -64,29 +64,42 @@ static PyObject* fillPCMatrix(PyObject* self, PyObject* args, PyObject* kwargs) 
     npy_intp size_real = PyArray_SIZE(real_pattern_arr);
     npy_intp size_x = PyArray_SIZE(pattern_x_arr);
 
+    // First check if input vectors have length > 0
+    if (size_pred == 0) {
+        PyErr_SetString(PyExc_ValueError, "The length of the predicted pattern of Y is ZERO");
+        return NULL;
+    }
+    if (size_x == 0) {
+        PyErr_SetString(PyExc_ValueError, "The length of the causal pattern of X is ZERO");
+        return NULL;
+    }
+
+    // Check for NaN values - combine all checks into one loop
+    bool has_nan = false;
     for(npy_intp i = 0; i < size_pred; i++) {
         if(std::isnan(pred_pattern[i])) {
-            Py_DECREF(pred_pattern_arr);
-            Py_DECREF(real_pattern_arr);
-            Py_DECREF(pattern_x_arr);
-            return Py_BuildValue("{s:d,s:d}", "real", NAN, "predicted", NAN);
+            has_nan = true;
+            break;
         }
     }
-    for(npy_intp i = 0; i < size_real; i++) {
+    for(npy_intp i = 0; i < size_real && !has_nan; i++) {
         if(std::isnan(real_pattern[i])) {
-            Py_DECREF(pred_pattern_arr);
-            Py_DECREF(real_pattern_arr);
-            Py_DECREF(pattern_x_arr);
-            return Py_BuildValue("{s:d,s:d}", "real", NAN, "predicted", NAN);
+            has_nan = true;
+            break;
         }
     }
-    for(npy_intp i = 0; i < size_x; i++) {
+    for(npy_intp i = 0; i < size_x && !has_nan; i++) {
         if(std::isnan(pattern_x[i])) {
-            Py_DECREF(pred_pattern_arr);
-            Py_DECREF(real_pattern_arr);
-            Py_DECREF(pattern_x_arr);
-            return Py_BuildValue("{s:d,s:d}", "real", NAN, "predicted", NAN);
+            has_nan = true;
+            break;
         }
+    }
+
+    if (has_nan) {
+        Py_DECREF(pred_pattern_arr);
+        Py_DECREF(real_pattern_arr);
+        Py_DECREF(pattern_x_arr);
+        return Py_BuildValue("{s:d,s:d}", "real", NAN, "predicted", NAN);
     }
 
     double predictedCausalityStrength, realCausalityStrength;
@@ -113,7 +126,7 @@ static PyObject* fillPCMatrix(PyObject* self, PyObject* args, PyObject* kwargs) 
             predictedCausalityStrength = std::erf(pred_ratio);
             realCausalityStrength = std::erf(real_ratio);
         } else {
-            // For unweighted case, use binary classification based on pattern matching only
+            // For unweighted case, just return 1.0 when patterns match
             predictedCausalityStrength = 1.0;
             realCausalityStrength = 1.0;
         }

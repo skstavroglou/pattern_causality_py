@@ -7,11 +7,11 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pattern_causality"
-version = "0.0.2"
+name = "pattern-causality"
+version = "0.0.3"
 description = "Pattern Causality Algorithm in Python"
 readme = "README.md"
-requires-python = ">=3.2"
+requires-python = ">=3.7"
 license = {text = "BSD License"}
 authors = [
     {name = "Stavros Stavroglou", email = "stavros.k.stavroglou@gmail.com"},
@@ -24,6 +24,14 @@ maintainers = [
 dependencies = [
     "numpy",
     "pandas",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 
 [project.urls]
@@ -47,3 +55,15 @@ dev = [
     "isort>=5.0",
     "flake8>=4.0",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+
+[tool.isort]
+profile = "black"
+multi-line-output = 3
+
+[tool.mypy]
+python-version = "3.7"
+strict = true
