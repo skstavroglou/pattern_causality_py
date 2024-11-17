@@ -32,15 +32,16 @@ jobs:
         python -m pip install setuptools wheel numpy pandas
         python -m pip install pytest pytest-cov
         
-    - name: Build and install package
+    - name: Create package structure
       run: |
-        # Create package structure
         mkdir -p pattern_causality/utils
         touch pattern_causality/__init__.py
         touch pattern_causality/utils/__init__.py
         
-        # Build package normally (not in editable mode)
-        python setup.py build_ext --inplace
+    - name: Build package
+      run: |
+        python setup.py build_ext
+        cp build/lib.*/*.so pattern_causality/utils/
         python setup.py install
         
     - name: Run tests
