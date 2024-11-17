@@ -39,19 +39,9 @@ jobs:
         touch pattern_causality/__init__.py
         touch pattern_causality/utils/__init__.py
         
-        # Build extensions
-        python setup.py build_ext
-        
-        # Copy built extensions to correct location
-        find build/lib.*/utils/ -name "*.so" -exec cp {} pattern_causality/utils/ \;
-        
-        # Install package
-        PYTHONPATH=$PWD python -m pip install -e .
-        
-    - name: Verify installation
-      run: |
-        python -c "from pattern_causality.utils import statespace"
-        python -c "import pattern_causality; print(pattern_causality.__file__)"
+        # Build package normally (not in editable mode)
+        python setup.py build_ext --inplace
+        python setup.py install
         
     - name: Run tests
       run: |
