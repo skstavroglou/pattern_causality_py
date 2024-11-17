@@ -18,9 +18,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++ python3-dev
           
-      - name: Create package structure
+      - name: Create directories
         run: |
           mkdir -p pattern_causality/utils
+          mkdir -p utils
           touch pattern_causality/__init__.py
           touch pattern_causality/utils/__init__.py
           
@@ -31,9 +32,9 @@ jobs:
           python -m pip install black isort flake8 mypy typing-extensions
           python -m pip install build
           
-      - name: Build and install package
+      - name: Build package
         run: |
-          python -m pip install -e .
+          python -m pip install .
           
       - name: Format with Black
         run: |
