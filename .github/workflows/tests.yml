@@ -26,12 +26,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y g++ python3-dev
 
-    - name: Create package structure
-      run: |
-        mkdir -p pattern_causality/utils
-        touch pattern_causality/__init__.py
-        touch pattern_causality/utils/__init__.py
-        
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
@@ -40,9 +34,19 @@ jobs:
         
     - name: Build and install package
       run: |
-        python setup.py build_ext --inplace
-        cp build/lib.*/*.so pattern_causality/utils/
-        python -m pip install -e .
+        # Create package structure
+        mkdir -p pattern_causality/utils
+        touch pattern_causality/__init__.py
+        touch pattern_causality/utils/__init__.py
+        
+        # Build extensions
+        python setup.py build_ext
+        
+        # Copy built extensions to correct location
+        find build/lib.*/utils/ -name "*.so" -exec cp {} pattern_causality/utils/ \;
+        
+        # Install package
+        PYTHONPATH=$PWD python -m pip install -e .
         
     - name: Verify installation
       run: |
