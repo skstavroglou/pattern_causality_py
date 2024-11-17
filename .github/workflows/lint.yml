@@ -18,12 +18,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++ python3-dev
           
+      - name: Create package structure
+        run: |
+          mkdir -p pattern_causality/utils
+          touch pattern_causality/utils/__init__.py
+          
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           python -m pip install numpy pandas
           python -m pip install black isort flake8 mypy typing-extensions
-          python -m pip install -e ".[dev]"
+          python -m pip install build
+          
+      - name: Build extensions
+        run: |
+          python setup.py build_ext --inplace
+          
+      - name: Install package
+        run: |
+          pip install -e .
           
       - name: Format with Black
         run: |

@@ -22,8 +22,8 @@ maintainers = [
     {name = "Hui Wang", email = "huiw1128@gmail.com"},
 ]
 dependencies = [
-    "numpy",
-    "pandas",
+    "numpy>=1.19.0",
+    "pandas>=1.0.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -32,11 +32,10 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-
 [project.urls]
-Homepage = "https://github.com/wanghui5801/pattern_causality_py"
-Repository = "https://github.com/wanghui5801/pattern_causality_py.git"
-Documentation = "https://github.com/wanghui5801/pattern_causality_py#readme"
+Homepage = "https://github.com/skstavroglou/pattern_causality_py"
+Repository = "https://github.com/skstavroglou/pattern_causality_py.git"
+Documentation = "https://github.com/skstavroglou/pattern_causality_py#readme"
 
 [tool.setuptools]
 packages = ["pattern_causality"]

@@ -25,48 +25,37 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y g++ python3-dev
-    
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install numpy>=1.19.0 pandas>=1.0.0
-        python -m pip install pytest>=6.0.0 pytest-cov>=2.0.0
-        python -m pip install setuptools wheel build
-        python -m pip install typing-extensions
-    
-    - name: Verify directory structure
+
+    - name: Create package structure
       run: |
         mkdir -p pattern_causality/utils
         touch pattern_causality/__init__.py
         touch pattern_causality/utils/__init__.py
         
-        # 确保所有的 .cpp 文件都在正确的位置
-        for file in pattern_causality/*.cpp; do
-          if [ -f "$file" ]; then
-            echo "Found C++ file: $file"
-          fi
-        done
-    
-    - name: Build package
+    - name: Install build dependencies
       run: |
-        python -m build
+        python -m pip install --upgrade pip
+        python -m pip install setuptools wheel build
+        python -m pip install numpy>=1.19.0 pandas>=1.0.0
+        python -m pip install pytest>=6.0.0 pytest-cov>=2.0.0
+        
+    - name: Build package in development mode
+      run: |
+        python setup.py build_ext --inplace
         
     - name: Install package
       run: |
         pip install -e .
-    
-    - name: List installed packages
-      run: |
-        pip list
         
-    - name: Show directory structure
+    - name: Verify installation
       run: |
-        find . -type f -name "*.py" -o -name "*.cpp"
-    
+        python -c "import pattern_causality; print(pattern_causality.__file__)"
+        python -c "from pattern_causality.utils import statespace"
+        
     - name: Run tests
       run: |
         python -m pytest tests/ -v --cov=pattern_causality --cov-report=xml
-    
+        
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
