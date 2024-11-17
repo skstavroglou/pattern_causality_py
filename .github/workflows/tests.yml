@@ -26,6 +26,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y g++ python3-dev
 
+    - name: Create package structure
+      run: |
+        mkdir -p pattern_causality/utils
+        touch pattern_causality/__init__.py
+        touch pattern_causality/utils/__init__.py
+
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
@@ -33,17 +39,18 @@ jobs:
         python -m pip install numpy>=1.19.0 pandas>=1.0.0
         python -m pip install pytest>=6.0.0 pytest-cov>=2.0.0
         
-    - name: Build and install package
+    - name: Build C++ extensions
       run: |
-        # Build the package
-        python -m build --wheel
-        # Install the built wheel
-        pip install dist/*.whl
+        python setup.py build_ext --inplace
+        
+    - name: Install package
+      run: |
+        python -m pip install -e .
         
     - name: Verify installation
       run: |
+        python -c "from pattern_causality.utils import statespace"
         python -c "import pattern_causality; print(pattern_causality.__file__)"
-        python -c "import pattern_causality.utils.statespace"
         
     - name: Run tests
       run: |
