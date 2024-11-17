@@ -31,20 +31,17 @@ jobs:
         mkdir -p pattern_causality/utils
         touch pattern_causality/__init__.py
         touch pattern_causality/utils/__init__.py
-
+        
     - name: Install build dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel
-        python -m pip install build
-        python -m pip install numpy>=1.19.0 pandas>=1.0.0
-        python -m pip install pytest>=6.0.0 pytest-cov>=2.0.0
+        python -m pip install --upgrade pip
+        python -m pip install setuptools wheel numpy pandas
+        python -m pip install pytest pytest-cov
         
-    - name: Build C++ extensions
+    - name: Build and install package
       run: |
         python setup.py build_ext --inplace
-        
-    - name: Install package
-      run: |
+        cp build/lib.*/*.so pattern_causality/utils/
         python -m pip install -e .
         
     - name: Verify installation
@@ -54,7 +51,7 @@ jobs:
         
     - name: Run tests
       run: |
-        python -m pytest tests/ -v --cov=pattern_causality --cov-report=xml
+        pytest tests/ -v --cov=pattern_causality --cov-report=xml
         
     - name: Upload coverage
       uses: codecov/codecov-action@v3
