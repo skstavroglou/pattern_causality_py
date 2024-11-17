@@ -34,14 +34,15 @@ jobs:
         
     - name: Install build dependencies
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install setuptools wheel build
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install build
         python -m pip install numpy>=1.19.0 pandas>=1.0.0
         python -m pip install pytest>=6.0.0 pytest-cov>=2.0.0
         
-    - name: Build package in development mode
+    - name: Build C++ extensions
       run: |
-        python setup.py build_ext --inplace
+        python setup.py build_ext
+        cp -r build/lib.*/* .
         
     - name: Install package
       run: |
