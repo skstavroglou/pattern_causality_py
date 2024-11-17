@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Testing | [![Tests](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml) [![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](https://github.com/skstavroglou/pattern_causality_py)|
-| Package | [![PyPI version](https://img.shields.io/pypi/v/pattern-causality.svg)](https://badge.fury.io/py/pattern-causality) [![![PyPI Downloads](https://img.shields.io/pypi/dm/pattern-causality.svg?label=PyPI%20downloads)](https://pypi.org/project/pattern-causality/) [![Python](https://img.shields.io/pypi/pyversions/pattern-causality.svg)](https://pypi.org/project/pattern-causality/) |
+| Package | [![PyPI version](https://img.shields.io/pypi/v/pattern-causality.svg)](https://badge.fury.io/py/pattern-causality) [![PyPI Downloads](https://img.shields.io/pypi/dm/pattern-causality.svg?label=PyPI%20downloads)](https://pypi.org/project/pattern-causality/) [![Python](https://img.shields.io/pypi/pyversions/pattern-causality.svg)](https://pypi.org/project/pattern-causality/) |
 | Meta | [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/pypi/l/pattern-causality.svg)](https://github.com/skstavroglou/pattern_causality_py/blob/main/LICENSE) |
 
 
