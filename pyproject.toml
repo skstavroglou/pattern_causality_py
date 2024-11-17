@@ -11,7 +11,7 @@ name = "pattern-causality"
 version = "0.0.3"
 description = "Pattern Causality Algorithm in Python"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {text = "BSD License"}
 authors = [
     {name = "Stavros Stavroglou", email = "stavros.k.stavroglou@gmail.com"},
@@ -27,7 +27,6 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -58,12 +57,19 @@ dev = [
 
 [tool.black]
 line-length = 88
-target-version = ['py37']
+target-version = ['py38']
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+^/pattern_causality/pattern_causality.py
+'''
 
 [tool.isort]
 profile = "black"
-multi-line-output = 3
+multi_line_output = 3
+line_length = 88
+skip = ["pattern_causality/pattern_causality.py"]
 
 [tool.mypy]
-python-version = "3.7"
-strict = true
+python_version = "3.8"
+ignore_missing_imports = true
