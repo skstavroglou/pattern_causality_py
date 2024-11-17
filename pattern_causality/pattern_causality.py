@@ -475,7 +475,6 @@ def pc_matrix(
         ),
     }
 
-
 @runtime_checkable
 class PCMatrixResult(Protocol):
     """Protocol for pc_matrix results"""
@@ -568,3 +567,4 @@ def pc_effect(pcmatrix: Dict[str, Union[np.ndarray, list]]) -> Dict[str, pd.Data
     results["items"] = items
 
     return results
+
