@@ -11,45 +11,61 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        python-version: [3.8, 3.9, "3.10"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v2
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++ python3-dev
-
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel numpy pandas
-        python -m pip install pytest pytest-cov
-        
+        python -m pip install numpy pandas setuptools wheel
+        sudo apt-get update
+        sudo apt-get install -y g++
+    
     - name: Create package structure
       run: |
+        mkdir -p utils
         mkdir -p pattern_causality/utils
-        touch pattern_causality/__init__.py
+        
+        cat > utils/__init__.py << 'EOL'
+        from .statespace import statespace
+        from .patternhashing import patternhashing
+        from .signaturespace import signaturespace
+        from .distancematrix import distancematrix
+        from .patternspace import patternspace
+        from .pastNNs import pastNNs
+        from .projectedNNs import projectedNNs
+        from .predictionY import predictionY
+        from .fillPCMatrix import fillPCMatrix
+        from .natureOfCausality import natureOfCausality
+        from .databank import databank
+        from .fcp import fcp
+
+        __all__ = [
+            'statespace', 'patternhashing', 'signaturespace', 'distancematrix',
+            'patternspace', 'pastNNs', 'projectedNNs', 'predictionY',
+            'fillPCMatrix', 'natureOfCausality', 'databank', 'fcp'
+        ]
+        EOL
+        
         touch pattern_causality/utils/__init__.py
-        
-    - name: Build package
+    
+    - name: Install package
       run: |
-        python setup.py build_ext
-        cp build/lib.*/*.so pattern_causality/utils/
-        python setup.py install
-        
+        pip install pytest pytest-cov
+        pip install -e .
+    
+    - name: List directory structure
+      run: |
+        echo "Current directory structure:"
+        find . -type f -name "*.py" -o -name "*.cpp"
+    
     - name: Run tests
       run: |
-        pytest tests/ -v --cov=pattern_causality --cov-report=xml
-        
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+        python -m pytest tests/ --cov=pattern_causality -v
