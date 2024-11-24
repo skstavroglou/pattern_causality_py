@@ -57,7 +57,7 @@ class TestAdvancedFunctionality(unittest.TestCase):
             dataset=self.data.drop(columns=["Date"]),
         )
         self.assertIsInstance(result, pd.DataFrame)
-        # 检查DataFrame是否包含必要的列
+        # Check if DataFrame contains necessary columns
         expected_columns = [
             "E",
             "tau",
@@ -68,7 +68,7 @@ class TestAdvancedFunctionality(unittest.TestCase):
         ]
         for col in expected_columns:
             self.assertIn(col, result.columns)
-        # 检查数据类型和范围
+        # Check data types and ranges
         self.assertTrue(all(result["E"] >= 2))
         self.assertTrue(all(result["tau"] >= 1))
 
