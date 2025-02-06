@@ -1,22 +1,28 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <limits>
 
 static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
     PyArrayObject *PC, *dur, *hashedpatterns, *X;
     PyObject* weighted_obj;
 
+    // Parse input arguments
     if (!PyArg_ParseTuple(args, "OOOOO", &PC, &dur, &hashedpatterns, &X, &weighted_obj)) {
         return NULL;
     }
 
     bool weighted = PyObject_IsTrue(weighted_obj);
 
-    // Convert inputs to numpy arrays
-    PyArrayObject* pc_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)PC, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject* dur_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)dur, NPY_LONG, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject* hashed_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)hashedpatterns, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject* x_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)X, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    // Convert inputs to numpy arrays with optimization flags
+    PyArrayObject* pc_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)PC, NPY_DOUBLE, 
+                           NPY_ARRAY_IN_ARRAY | NPY_ARRAY_ALIGNED);
+    PyArrayObject* dur_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)dur, NPY_LONG, 
+                           NPY_ARRAY_IN_ARRAY | NPY_ARRAY_ALIGNED);
+    PyArrayObject* hashed_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)hashedpatterns, NPY_DOUBLE, 
+                               NPY_ARRAY_IN_ARRAY | NPY_ARRAY_ALIGNED);
+    PyArrayObject* x_arr = (PyArrayObject*)PyArray_FROM_OTF((PyObject*)X, NPY_DOUBLE, 
+                          NPY_ARRAY_IN_ARRAY | NPY_ARRAY_ALIGNED);
 
     if (!pc_arr || !dur_arr || !hashed_arr || !x_arr) {
         Py_XDECREF(pc_arr);
@@ -28,8 +34,13 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
 
     // Get array dimensions
     npy_intp x_size = PyArray_SIZE(x_arr);
+    npy_intp* pc_dims = PyArray_DIMS(pc_arr);
+    
+    // Pre-calculate array strides for faster access
+    npy_intp pc_stride_row = pc_dims[1] * pc_dims[2];
+    npy_intp pc_stride_col = pc_dims[2];
 
-    // Create output arrays
+    // Create output arrays initialized with NaN
     npy_intp dims[1] = {x_size};
     PyArrayObject* positive_causality = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_DOUBLE, 0);
     PyArrayObject* negative_causality = (PyArrayObject*)PyArray_ZEROS(1, dims, NPY_DOUBLE, 0);
@@ -48,19 +59,26 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    // Get data pointers for direct memory access
     double* pos_data = (double*)PyArray_DATA(positive_causality);
     double* neg_data = (double*)PyArray_DATA(negative_causality);
     double* dark_data = (double*)PyArray_DATA(dark_causality);
     double* no_data = (double*)PyArray_DATA(no_causality);
-    
+    double* pc_data = (double*)PyArray_DATA(pc_arr);
     long* dur_data = (long*)PyArray_DATA(dur_arr);
+    
+    // Initialize with NaN
+    const double nan_value = std::numeric_limits<double>::quiet_NaN();
+    for(npy_intp i = 0; i < x_size; i++) {
+        pos_data[i] = neg_data[i] = dark_data[i] = no_data[i] = nan_value;
+    }
+    
     npy_intp dur_size = PyArray_SIZE(dur_arr);
     npy_intp hashed_size = PyArray_SIZE(hashed_arr);
     npy_intp mean_pattern = hashed_size / 2;  // Calculate mean pattern index
 
-    // Get dimensions of PC array
-    npy_intp* pc_dims = PyArray_DIMS(pc_arr);
-
+    // Main computation loop
+    #pragma omp parallel for if(dur_size > 1000) // Enable OpenMP for large arrays
     for (npy_intp d = 0; d < dur_size; d++) {
         long i = dur_data[d];
         
@@ -69,11 +87,11 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
         npy_intp cell_row = 0, cell_col = 0;
         double pc_val = 0.0;
         
+        // Optimized search for first non-NaN value
         for (npy_intp row = 0; row < pc_dims[0] && !found; row++) {
+            const npy_intp row_offset = row * pc_stride_row;
             for (npy_intp col = 0; col < pc_dims[1] && !found; col++) {
-                double* pc_data = (double*)PyArray_DATA(pc_arr);
-                double value = pc_data[row * pc_dims[1] * pc_dims[2] + col * pc_dims[2] + i];
-                
+                const double value = pc_data[row_offset + col * pc_stride_col + i];
                 if (!isnan(value)) {
                     cell_row = row;
                     cell_col = col;
@@ -137,6 +155,18 @@ static PyObject* natureOfCausality(PyObject* self, PyObject* args) {
 
     // Create return dictionary
     PyObject* result = PyDict_New();
+    if (!result) {
+        Py_XDECREF(pc_arr);
+        Py_XDECREF(dur_arr);
+        Py_XDECREF(hashed_arr);
+        Py_XDECREF(x_arr);
+        Py_XDECREF(positive_causality);
+        Py_XDECREF(negative_causality);
+        Py_XDECREF(dark_causality);
+        Py_XDECREF(no_causality);
+        return NULL;
+    }
+
     PyDict_SetItemString(result, "noCausality", (PyObject*)no_causality);
     PyDict_SetItemString(result, "Positive", (PyObject*)positive_causality);
     PyDict_SetItemString(result, "Negative", (PyObject*)negative_causality);

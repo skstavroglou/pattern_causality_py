@@ -568,3 +568,244 @@ def pc_effect(pcmatrix: Dict[str, Union[np.ndarray, list]]) -> Dict[str, pd.Data
 
     return results
 
+
+def convert_signature_to_value(E: int, tau: int, Y: Union[List, np.ndarray], i: int, h: int, predicted_signature_Y: np.ndarray) -> np.ndarray:
+    """
+    Convert signature to actual values.
+    
+    Args:
+        E: Embedding dimension
+        tau: Time delay
+        Y: Time series data
+        i: Current index
+        h: Prediction horizon
+        predicted_signature_Y: Predicted signature
+        
+    Returns:
+        Array of predicted values
+    """
+    predicted_Y = np.zeros(E)
+    predicted_Y[0] = Y[i + h]
+    for k in range(1, E):
+        predicted_Y[k] = predicted_Y[k-1] + predicted_signature_Y[k-1]
+    return predicted_Y
+
+def convert_signature_to_value_out_of_sample(E: int, tau: int, Y_pred_last: float, i: int, h: int, predicted_signature_Y: np.ndarray) -> np.ndarray:
+    """
+    Convert signature to values for out of sample prediction.
+    
+    Args:
+        E: Embedding dimension
+        tau: Time delay
+        Y_pred_last: Last predicted value
+        i: Current index
+        h: Prediction horizon
+        predicted_signature_Y: Predicted signature
+        
+    Returns:
+        Array of predicted values
+    """
+    predicted_Y = np.zeros(E)
+    predicted_Y[0] = Y_pred_last
+    for k in range(1, E):
+        predicted_Y[k] = predicted_Y[k-1] + predicted_signature_Y[k-1]
+    return predicted_Y
+
+def pc_full_details(
+    X: Union[List, np.ndarray, pd.Series],
+    Y: Union[List, np.ndarray, pd.Series],
+    E: int,
+    tau: int,
+    metric: str = "euclidean",
+    h: int = 1,
+    weighted: bool = False,
+) -> Dict[str, np.ndarray]:
+    """
+    Pattern Causality Full Details implementation.
+    
+    Args:
+        X: Input time series (causal variable)
+        Y: Input time series (affected variable)
+        E: Embedding dimension
+        tau: Time delay
+        metric: Distance metric to use
+        h: Prediction horizon
+        weighted: Whether to use weighted calculations
+        
+    Returns:
+        Dictionary containing causality arrays:
+            - noCausality: Array of no causality values
+            - Positive: Array of positive causality values
+            - Negative: Array of negative causality values
+            - Dark: Array of dark causality values
+    """
+    # Convert inputs to lists
+    if isinstance(X, pd.Series):
+        X = X.values.tolist()
+    elif isinstance(X, np.ndarray):
+        X = X.tolist()
+
+    if isinstance(Y, pd.Series):
+        Y = Y.values.tolist()
+    elif isinstance(Y, np.ndarray):
+        Y = Y.tolist()
+
+    if not isinstance(X, list) or not isinstance(Y, list):
+        raise TypeError("X and Y must be lists, numpy arrays, or pandas Series")
+
+    # Initialize constants
+    NNSPAN = E + 1  # Minimum number of nearest neighbors
+    CCSPAN = (E - 1) * tau  # Remove common coordinate NNs
+    hashedpatterns = patternhashing(E)
+
+    # STEP 1: THE SHADOW ATTRACTORS
+    # A: State Space
+    Mx = statespace(X, E, tau)
+    My = statespace(Y, E, tau)
+
+    # B: Signature Space
+    SMx = signaturespace(Mx, E)
+    SMy = signaturespace(My, E)
+
+    # C: Pattern Space
+    PSMx = patternspace(SMx, E)
+    PSMy = patternspace(SMy, E)
+
+    # D: Distance Matrix
+    Dx = distancematrix(Mx, metric=metric)
+    Dy = distancematrix(My, metric=metric)
+
+    # Check if time series length is sufficient
+    FCP = fcp(E, tau, h, X)
+    
+    # Calculate main loop duration
+    al_loop_dur = range(FCP, len(X) - (E - 1) * tau - h)
+
+    # Initialize storage arrays
+    predictedPCMatrix = databank("array", [3 ** (E - 1), 3 ** (E - 1), len(Y)])
+    real_loop = []
+
+    # Main computation loop
+    for i in al_loop_dur:
+        if not np.any(np.isnan(Mx[i])) and not np.any(np.isnan(My[i + h])):
+            NNx = pastNNs(CCSPAN, NNSPAN, Mx, Dx, SMx, PSMx, i, h)
+            
+            if NNx and not np.any(np.isnan(NNx["dists"])):
+                if not np.any(np.isnan(Dy[i, NNx["times"] + h])):
+                    real_loop.append(i)
+                    
+                    projNNy = projectedNNs(My, Dy, SMy, PSMy, NNx["times"], i, h)
+
+                    # Calculate predictions
+                    predicted_result = predictionY(E, projNNy, zeroTolerance=E-1)
+                    predictedSignatureY = predicted_result["predictedSignatureY"]
+                    predictedPatternY = predicted_result["predictedPatternY"]
+                    
+                    # Get patterns and signatures
+                    signatureX = SMx[i]
+                    patternX = PSMx[i]
+                    realSignatureY = SMy[i + h]
+                    realPatternY = PSMy[i + h]
+
+                    # Calculate PC matrix values
+                    pc = fillPCMatrix(
+                        weighted=weighted,
+                        predictedPatternY=predictedPatternY,
+                        realPatternY=realPatternY,
+                        predictedSignatureY=predictedSignatureY,
+                        realSignatureY=realSignatureY,
+                        patternX=patternX,
+                        signatureX=signatureX,
+                    )
+                    
+                    # Store PC matrix values
+                    predictedPCMatrix[
+                        hashedpatterns.index(patternX),
+                        hashedpatterns.index(predictedPatternY),
+                        i
+                    ] = pc["predicted"]
+
+    # Calculate causality spectrum
+    real_loop = np.array(real_loop)
+    return natureOfCausality(predictedPCMatrix, real_loop, hashedpatterns, X, weighted)
+
+def pc_into_the_dark(
+    X: Union[List, np.ndarray, pd.Series],
+    Y: Union[List, np.ndarray, pd.Series],
+    E: int,
+    tau: int,
+    metric: str,
+    spot: int,
+    dark_horizon: int
+) -> np.ndarray:
+    """
+    Pattern Causality prediction into the dark (future).
+    
+    Args:
+        X: Input time series (causal variable)
+        Y: Input time series (affected variable)
+        E: Embedding dimension
+        tau: Time delay
+        metric: Distance metric
+        spot: Starting point for prediction
+        dark_horizon: Number of steps to predict into the future
+        
+    Returns:
+        Array of predicted values
+    """
+    # Convert inputs to lists
+    if isinstance(X, pd.Series):
+        X = X.values.tolist()
+    elif isinstance(X, np.ndarray):
+        X = X.tolist()
+
+    if isinstance(Y, pd.Series):
+        Y = Y.values.tolist()
+    elif isinstance(Y, np.ndarray):
+        Y = Y.tolist()
+
+    if not isinstance(X, list) or not isinstance(Y, list):
+        raise TypeError("X and Y must be lists, numpy arrays, or pandas Series")
+
+    # Initialize constants
+    NNSPAN = E + 1
+    CCSPAN = (E - 1) * tau
+    hashedpatterns = patternhashing(E)
+
+    # Calculate shadow attractors
+    Mx = statespace(X, E, tau)
+    My = statespace(Y, E, tau)
+    SMx = signaturespace(Mx, E)
+    SMy = signaturespace(My, E)
+    PSMx = patternspace(SMx, E)
+    PSMy = patternspace(SMy, E)
+    Dx = distancematrix(Mx, metric=metric)
+    Dy = distancematrix(My, metric=metric)
+
+    # Initialize predicted values storage
+    predictedValuesY = databank("matrix", [dark_horizon + 1, E])
+
+    # First prediction to disentangle from Y
+    if not np.any(np.isnan(Mx[spot])):
+        NNx = pastNNs(CCSPAN, NNSPAN, Mx, Dx, SMx, PSMx, spot, h=0)
+        if not np.any(np.isnan(Dy[spot, NNx["times"]])):
+            projNNy = projectedNNs(My, Dy, SMy, PSMy, NNx["times"], spot, h=0)
+            predictedSignatureY = predictionY(E, projNNy, zeroTolerance=E-1)["predictedSignatureY"]
+            predictedValuesY[0] = convert_signature_to_value(E, tau, Y, spot, 0, predictedSignatureY)
+
+    # Predict into the dark
+    j = 1
+    for h in range(1, dark_horizon + 1):
+        if not np.any(np.isnan(Mx[spot])):
+            NNx = pastNNs(CCSPAN, NNSPAN, Mx, Dx, SMx, PSMx, spot, h)
+            if NNx and not np.any(np.isnan(NNx["dists"])):
+                if not np.any(np.isnan(Dy[spot, NNx["times"] + h])):
+                    projNNy = projectedNNs(My, Dy, SMy, PSMy, NNx["times"], spot, h)
+                    predictedSignatureY = predictionY(E, projNNy, zeroTolerance=E-1)["predictedSignatureY"]
+                    predictedValuesY[j] = convert_signature_to_value_out_of_sample(
+                        E, tau, predictedValuesY[j-1, -1], spot, h, predictedSignatureY
+                    )
+                    j += 1
+
+    return predictedValuesY
+

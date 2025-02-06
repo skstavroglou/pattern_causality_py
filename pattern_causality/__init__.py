@@ -7,6 +7,8 @@ __all__ = [
     "pc_cross_validation",
     "pc_matrix",
     "pc_effect",
+    "pc_full_details",
+    "pc_into_the_dark",
     "load_data",
 ]
-__version__ = "0.0.3"
+__version__ = "0.0.4"

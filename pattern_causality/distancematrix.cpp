@@ -1,115 +1,45 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <numpy/arrayobject.h>
-#include <vector>
 #include <cmath>
 #include <string>
 
 // Helper functions for different distance metrics
-static double euclideanDistance(const std::vector<double>& vec1, const std::vector<double>& vec2) {
+static inline double euclideanDistance(const double* vec1, const double* vec2, size_t size) {
     double sum = 0.0;
-    for (size_t i = 0; i < vec1.size(); i++) {
+    for (size_t i = 0; i < size; i++) {
         double diff = vec1[i] - vec2[i];
         sum += diff * diff;
     }
     return sqrt(sum);
 }
 
-static double manhattanDistance(const std::vector<double>& vec1, const std::vector<double>& vec2) {
+static inline double manhattanDistance(const double* vec1, const double* vec2, size_t size) {
     double sum = 0.0;
-    for (size_t i = 0; i < vec1.size(); i++) {
+    for (size_t i = 0; i < size; i++) {
         sum += fabs(vec1[i] - vec2[i]);
     }
     return sum;
 }
 
-static double minkowskiDistance(const std::vector<double>& vec1, const std::vector<double>& vec2, int n) {
+static inline double minkowskiDistance(const double* vec1, const double* vec2, size_t size, int n) {
     double sum = 0.0;
-    for (size_t i = 0; i < vec1.size(); i++) {
+    for (size_t i = 0; i < size; i++) {
         sum += pow(fabs(vec1[i] - vec2[i]), n);
     }
     return pow(sum, 1.0/n);
 }
 
-static double calculateDistance(const std::vector<double>& vec1, const std::vector<double>& vec2, 
-                              const std::string& metric, int n = 2) {
+static inline double calculateDistance(const double* vec1, const double* vec2, size_t size,
+                                       const std::string& metric, int n = 2) {
     if (metric == "euclidean") {
-        return euclideanDistance(vec1, vec2);
+        return euclideanDistance(vec1, vec2, size);
     } else if (metric == "manhattan") {
-        return manhattanDistance(vec1, vec2);
+        return manhattanDistance(vec1, vec2, size);
     } else if (metric == "minkowski") {
-        return minkowskiDistance(vec1, vec2, n);
+        return minkowskiDistance(vec1, vec2, size, n);
     }
-    // Default to Euclidean
-    return euclideanDistance(vec1, vec2);
-}
-
-static PyObject* distanceVector(PyObject* self, PyObject* args, PyObject* kwargs) {
-    PyObject* point_obj;
-    PyObject* candidates_obj;
-    const char* metric_str = "euclidean";
-    int n = 2;
-    
-    static char* kwlist[] = {"point", "candidates", "metric", "n", NULL};
-    
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|si", kwlist, 
-                                    &point_obj, &candidates_obj, &metric_str, &n)) {
-        return NULL;
-    }
-
-    PyArrayObject* point_array = (PyArrayObject*)PyArray_FROM_OTF(point_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject* candidates_array = (PyArrayObject*)PyArray_FROM_OTF(candidates_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    
-    if (point_array == NULL || candidates_array == NULL) {
-        Py_XDECREF(point_array);
-        Py_XDECREF(candidates_array);
-        PyErr_SetString(PyExc_TypeError, "Could not convert input to numpy array");
-        return NULL;
-    }
-
-    if (PyArray_NDIM(point_array) != 1 || PyArray_NDIM(candidates_array) != 2) {
-        Py_DECREF(point_array);
-        Py_DECREF(candidates_array);
-        PyErr_SetString(PyExc_ValueError, "Invalid input dimensions");
-        return NULL;
-    }
-
-    npy_intp point_size = PyArray_DIM(point_array, 0);
-    npy_intp num_candidates = PyArray_DIM(candidates_array, 0);
-    npy_intp vec_size = PyArray_DIM(candidates_array, 1);
-
-    if (point_size != vec_size) {
-        Py_DECREF(point_array);
-        Py_DECREF(candidates_array);
-        PyErr_SetString(PyExc_ValueError, "Dimension mismatch");
-        return NULL;
-    }
-
-    npy_intp dims[1] = {num_candidates};
-    PyObject* result = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    if (result == NULL) {
-        Py_DECREF(point_array);
-        Py_DECREF(candidates_array);
-        return NULL;
-    }
-
-    double* point_data = (double*)PyArray_DATA(point_array);
-    double* candidates_data = (double*)PyArray_DATA(candidates_array);
-    double* result_data = (double*)PyArray_DATA((PyArrayObject*)result);
-
-    std::string metric(metric_str);
-    std::vector<double> point(point_data, point_data + point_size);
-
-    for (npy_intp i = 0; i < num_candidates; i++) {
-        std::vector<double> vec(candidates_data + i * vec_size, 
-                              candidates_data + (i + 1) * vec_size);
-        result_data[i] = calculateDistance(point, vec, metric, n);
-    }
-
-    Py_DECREF(point_array);
-    Py_DECREF(candidates_array);
-
-    return result;
+    return euclideanDistance(vec1, vec2, size);
 }
 
 static PyObject* distanceMatrix(PyObject* self, PyObject* args, PyObject* kwargs) {
@@ -152,14 +82,15 @@ static PyObject* distanceMatrix(PyObject* self, PyObject* args, PyObject* kwargs
     std::string metric(metric_str);
 
     for (npy_intp i = 0; i < num_rows; i++) {
-        std::vector<double> vec1(matrix_data + i * vec_size, 
-                               matrix_data + (i + 1) * vec_size);
+        const double* vec1 = matrix_data + i * vec_size;
+        result_data[i * num_rows + i] = 0.0;
         
-        for (npy_intp j = 0; j < num_rows; j++) {
-            std::vector<double> vec2(matrix_data + j * vec_size, 
-                                   matrix_data + (j + 1) * vec_size);
+        for (npy_intp j = i + 1; j < num_rows; j++) {
+            const double* vec2 = matrix_data + j * vec_size;
+            double dist = calculateDistance(vec1, vec2, vec_size, metric, n);
             
-            result_data[i * num_rows + j] = calculateDistance(vec1, vec2, metric, n);
+            result_data[i * num_rows + j] = dist;
+            result_data[j * num_rows + i] = dist;
         }
     }
 
@@ -169,8 +100,6 @@ static PyObject* distanceMatrix(PyObject* self, PyObject* args, PyObject* kwargs
 }
 
 static PyMethodDef DistanceMatrixMethods[] = {
-    {"distancevector", (PyCFunction)distanceVector, METH_VARARGS | METH_KEYWORDS, 
-     "Calculate distances between a point and multiple candidates"},
     {"distancematrix", (PyCFunction)distanceMatrix, METH_VARARGS | METH_KEYWORDS, 
      "Calculate distance matrix for a set of vectors"},
     {NULL, NULL, 0, NULL}

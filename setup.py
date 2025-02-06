@@ -111,13 +111,14 @@ extensions = [
             "pattern_causality/fcp.cpp",
         ],
         language="c++",
+        include_dirs=[np.get_include()],
         extra_compile_args=["-std=c++11"],
     ),
 ]
 
 setup(
     name="pattern_causality",
-    version="0.0.3",
+    version="0.0.4",
     description="Pattern Causality Algorithm in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
