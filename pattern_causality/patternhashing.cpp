@@ -1,26 +1,40 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <vector>
 #include <cmath>
+#include <numpy/arrayobject.h>
+#include <algorithm>
+#include <set>
+
+// Helper function for factorial calculation
+static double factorial(int n) {
+    if (n <= 1) return 1.0;
+    double result = 1.0;
+    for (int i = 2; i <= n; ++i) {
+        result *= i;
+    }
+    return result;
+}
 
 // Helper function to generate possible patterns
 static std::vector<std::vector<int>> possiblePatterns(int E) {
-    std::vector<std::vector<int>> patterns;
-    
     if (E <= 1) {
-        return patterns; // Return empty vector
+        return std::vector<std::vector<int>>();
     }
     
-    // Generate all possible combinations
-    int numPatterns = pow(3, E-1);
-    patterns.resize(numPatterns);
+    // Calculate total number of combinations
+    const int numPatterns = pow(3, E-1);
+    std::vector<std::vector<int>> patterns(numPatterns);
     
-    for (int i = 0; i < numPatterns; i++) {
-        std::vector<int> pattern;
-        int num = i;
+    // Generate patterns using R's expand.grid logic
+    for (int i = 0; i < numPatterns; ++i) {
+        std::vector<int> pattern(E-1);
+        int temp = i;
         
-        for (int j = 0; j < E-1; j++) {
-            pattern.push_back((num % 3) + 1);
-            num /= 3;
+        // Fill pattern from right to left (least significant to most significant)
+        for (int j = E-2; j >= 0; --j) {
+            pattern[j] = (temp % 3) + 1;  // Convert to 1, 2, 3
+            temp /= 3;
         }
         
         patterns[i] = pattern;
@@ -29,17 +43,11 @@ static std::vector<std::vector<int>> possiblePatterns(int E) {
     return patterns;
 }
 
-// Helper function for factorial calculation
-static int factorial(int n) {
-    if (n <= 1) return 1;
-    return n * factorial(n-1);
-}
-
-// Helper function for hashing
-static int hashing(const std::vector<int>& vec) {
-    int hash = 0;
+// Helper function for hashing - must match R implementation exactly
+static double hashing(const std::vector<int>& vec) {
+    double hash = 0.0;
     for (size_t i = 0; i < vec.size(); i++) {
-        hash += vec[i] * factorial(i + 3);
+        hash += static_cast<double>(vec[i]) * factorial(i + 2);
     }
     return hash;
 }
@@ -53,19 +61,32 @@ static PyObject* patternHashing(PyObject* self, PyObject* args) {
 
     std::vector<std::vector<int>> patterns = possiblePatterns(E);
     
-    // Create Python list for results
-    PyObject* result_list;
+    // Handle E <= 1 case
     if (patterns.empty()) {
-        Py_RETURN_NONE;
-    } else {
-        result_list = PyList_New(patterns.size());
-        for (size_t i = 0; i < patterns.size(); i++) {
-            int hash_value = hashing(patterns[i]);
-            PyList_SET_ITEM(result_list, i, PyLong_FromLong(hash_value));
-        }
+        npy_intp dims[] = {0};
+        return (PyObject*)PyArray_SimpleNew(1, dims, NPY_DOUBLE);
     }
     
-    return result_list;
+    // Calculate hash values
+    std::vector<double> hash_values;
+    hash_values.reserve(patterns.size());
+    
+    for (const auto& pattern : patterns) {
+        hash_values.push_back(hashing(pattern));
+    }
+    
+    // Create numpy array for results
+    npy_intp dims[] = {static_cast<npy_intp>(hash_values.size())};
+    PyArrayObject* result_array = (PyArrayObject*)PyArray_SimpleNew(1, dims, NPY_DOUBLE);
+    if (!result_array) {
+        return NULL;
+    }
+    
+    // Copy hash values to output array
+    double* data = (double*)PyArray_DATA(result_array);
+    std::copy(hash_values.begin(), hash_values.end(), data);
+    
+    return (PyObject*)result_array;
 }
 
 static PyMethodDef PatternHashingMethods[] = {
@@ -82,5 +103,6 @@ static struct PyModuleDef patternhashing_module = {
 };
 
 PyMODINIT_FUNC PyInit_patternhashing(void) {
+    import_array();
     return PyModule_Create(&patternhashing_module);
 }

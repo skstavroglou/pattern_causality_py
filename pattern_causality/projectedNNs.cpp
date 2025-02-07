@@ -1,51 +1,75 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <vector>
 #include <cmath>
+#include <algorithm>
+#include <numeric>
 
+// Thread-local storage for reusable vectors
+thread_local std::vector<double> weights_2_buffer;
+thread_local std::vector<double> exp_weights_buffer;
+
+// Optimized weights calculation with SIMD support
 static PyObject* weights_relative_to_distance(PyObject* dists_vec_obj) {
     PyArrayObject* dists_vec = (PyArrayObject*)PyArray_FROM_OTF(dists_vec_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (!dists_vec) return NULL;
 
-    npy_intp n = PyArray_SIZE(dists_vec);
-    double* dists_data = (double*)PyArray_DATA(dists_vec);
+    const npy_intp n = PyArray_SIZE(dists_vec);
+    const double* dists_data = (double*)PyArray_DATA(dists_vec);
     
-    // Calculate sum
-    double w_total = 0;
+    // Calculate sum using SIMD
+    double w_total = 0.0;
+    #pragma omp simd reduction(+:w_total)
     for(npy_intp i = 0; i < n; i++) {
         w_total += dists_data[i];
     }
     
-    if(w_total == 0) {
-        w_total = 0.0001;
+    // Handle zero case
+    w_total = (w_total == 0.0) ? 0.0001 : w_total;
+    const double w_total_inv = 1.0 / w_total;
+    
+    // Reuse pre-allocated vectors
+    if (weights_2_buffer.size() < n) {
+        weights_2_buffer.resize(n);
+        exp_weights_buffer.resize(n);
     }
     
-    // Calculate weights_2
-    std::vector<double> weights_2(n);
+    // Calculate weights_2 using SIMD
+    #pragma omp simd
     for(npy_intp i = 0; i < n; i++) {
-        weights_2[i] = dists_data[i] / w_total;
+        weights_2_buffer[i] = dists_data[i] * w_total_inv;
     }
     
-    // Calculate final weights
-    double exp_sum = 0;
-    std::vector<double> exp_weights(n);
+    // Calculate exponentials using SIMD
+    double exp_sum = 0.0;
+    #pragma omp simd reduction(+:exp_sum)
     for(npy_intp i = 0; i < n; i++) {
-        exp_weights[i] = exp(-weights_2[i]);
-        exp_sum += exp_weights[i];
+        exp_weights_buffer[i] = std::exp(-weights_2_buffer[i]);
+        exp_sum += exp_weights_buffer[i];
     }
     
+    // Prepare output array
     npy_intp dims[] = {n};
     PyObject* weights = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    double* weights_data = (double*)PyArray_DATA((PyArrayObject*)weights);
+    if (!weights) {
+        Py_DECREF(dists_vec);
+        return NULL;
+    }
     
+    // Calculate final weights using SIMD
+    const double exp_sum_inv = 1.0 / exp_sum;
+    double* weights_data = (double*)PyArray_DATA((PyArrayObject*)weights);
+    #pragma omp simd
     for(npy_intp i = 0; i < n; i++) {
-        weights_data[i] = exp_weights[i] / exp_sum;
+        weights_data[i] = exp_weights_buffer[i] * exp_sum_inv;
     }
     
     Py_DECREF(dists_vec);
     return weights;
 }
 
+// Optimized projectedNNs function
 static PyObject* projectedNNs(PyObject* self, PyObject* args) {
     PyObject *my_obj, *dy_obj, *smy_obj, *psmy_obj, *times_x_obj;
     int i, h;
@@ -55,93 +79,147 @@ static PyObject* projectedNNs(PyObject* self, PyObject* args) {
         return NULL;
     }
     
-    PyArrayObject *my_array = (PyArrayObject*)PyArray_FROM_OTF(my_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *dy_array = (PyArrayObject*)PyArray_FROM_OTF(dy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *smy_array = (PyArrayObject*)PyArray_FROM_OTF(smy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *psmy_array = (PyArrayObject*)PyArray_FROM_OTF(psmy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    PyArrayObject *times_x_array = (PyArrayObject*)PyArray_FROM_OTF(times_x_obj, NPY_LONG, NPY_ARRAY_IN_ARRAY);
+    // Convert input arrays with error checking
+    PyArrayObject* arrays[] = {
+        (PyArrayObject*)PyArray_FROM_OTF(my_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY),
+        (PyArrayObject*)PyArray_FROM_OTF(dy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY),
+        (PyArrayObject*)PyArray_FROM_OTF(smy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY),
+        (PyArrayObject*)PyArray_FROM_OTF(psmy_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY),
+        (PyArrayObject*)PyArray_FROM_OTF(times_x_obj, NPY_LONG, NPY_ARRAY_IN_ARRAY)
+    };
     
-    if (!my_array || !dy_array || !smy_array || !psmy_array || !times_x_array) {
-        Py_XDECREF(my_array);
-        Py_XDECREF(dy_array);
-        Py_XDECREF(smy_array);
-        Py_XDECREF(psmy_array);
-        Py_XDECREF(times_x_array);
-        return NULL;
+    // Check for conversion errors
+    for (int j = 0; j < 5; j++) {
+        if (!arrays[j]) {
+            for (int k = 0; k < j; k++) {
+                Py_DECREF(arrays[k]);
+            }
+            return NULL;
+        }
     }
     
-    // Calculate projected times
-    npy_intp n_times = PyArray_SIZE(times_x_array);
+    // Get array dimensions once
+    const npy_intp n_times = PyArray_SIZE(arrays[4]);
+    const npy_intp dy_cols = PyArray_SHAPE(arrays[1])[1];
+    const npy_intp sig_cols = PyArray_SHAPE(arrays[2])[1];
+    const npy_intp pat_cols = PyArray_SHAPE(arrays[3])[1];
+    const npy_intp coord_cols = PyArray_SHAPE(arrays[0])[1];
+    
+    // Pre-allocate all output arrays
     npy_intp dims[] = {n_times};
     PyObject* projected_times = PyArray_SimpleNew(1, dims, NPY_LONG);
-    long* times_data = (long*)PyArray_DATA(times_x_array);
-    long* proj_times_data = (long*)PyArray_DATA((PyArrayObject*)projected_times);
-    
-    for(npy_intp j = 0; j < n_times; j++) {
-        proj_times_data[j] = times_data[j] + h;
-    }
-    
-    // Get distances
     PyObject* distances = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    double* dy_data = (double*)PyArray_DATA(dy_array);
-    double* dist_data = (double*)PyArray_DATA((PyArrayObject*)distances);
-    npy_intp dy_cols = PyArray_SHAPE(dy_array)[1];
     
-    for(npy_intp j = 0; j < n_times; j++) {
-        dist_data[j] = dy_data[i * dy_cols + proj_times_data[j]];
-    }
-    
-    // Calculate weights
-    PyObject* weights = weights_relative_to_distance(distances);
-    
-    // Get signatures, patterns and coordinates for projected times
-    npy_intp sig_dims[] = {n_times, PyArray_SHAPE(smy_array)[1]};
-    npy_intp pat_dims[] = {n_times, PyArray_SHAPE(psmy_array)[1]};
-    npy_intp coord_dims[] = {n_times, PyArray_SHAPE(my_array)[1]};
+    npy_intp sig_dims[] = {n_times, sig_cols};
+    npy_intp pat_dims[] = {n_times, pat_cols};
+    npy_intp coord_dims[] = {n_times, coord_cols};
     
     PyObject* signatures = PyArray_SimpleNew(2, sig_dims, NPY_DOUBLE);
     PyObject* patterns = PyArray_SimpleNew(2, pat_dims, NPY_DOUBLE);
     PyObject* coordinates = PyArray_SimpleNew(2, coord_dims, NPY_DOUBLE);
     
-    double* smy_data = (double*)PyArray_DATA(smy_array);
-    double* psmy_data = (double*)PyArray_DATA(psmy_array);
-    double* my_data = (double*)PyArray_DATA(my_array);
+    // Check memory allocation
+    if (!projected_times || !distances || !signatures || !patterns || !coordinates) {
+        for (auto arr : arrays) Py_DECREF(arr);
+        Py_XDECREF(projected_times);
+        Py_XDECREF(distances);
+        Py_XDECREF(signatures);
+        Py_XDECREF(patterns);
+        Py_XDECREF(coordinates);
+        return NULL;
+    }
+    
+    // Get data pointers
+    long* times_data = (long*)PyArray_DATA(arrays[4]);
+    double* dy_data = (double*)PyArray_DATA(arrays[1]);
+    double* smy_data = (double*)PyArray_DATA(arrays[2]);
+    double* psmy_data = (double*)PyArray_DATA(arrays[3]);
+    double* my_data = (double*)PyArray_DATA(arrays[0]);
+    
+    long* proj_times_data = (long*)PyArray_DATA((PyArrayObject*)projected_times);
+    double* dist_data = (double*)PyArray_DATA((PyArrayObject*)distances);
     double* sig_data = (double*)PyArray_DATA((PyArrayObject*)signatures);
     double* pat_data = (double*)PyArray_DATA((PyArrayObject*)patterns);
     double* coord_data = (double*)PyArray_DATA((PyArrayObject*)coordinates);
     
+    // Calculate projected times and distances using SIMD
+    #pragma omp parallel for simd schedule(static)
     for(npy_intp j = 0; j < n_times; j++) {
-        long proj_time = proj_times_data[j];
-        
-        for(npy_intp k = 0; k < sig_dims[1]; k++) {
-            sig_data[j * sig_dims[1] + k] = smy_data[proj_time * sig_dims[1] + k];
+        const long proj_time = times_data[j] + h;
+        proj_times_data[j] = proj_time;
+        dist_data[j] = dy_data[i * dy_cols + proj_time];
+    }
+    
+    // Calculate weights
+    PyObject* weights = weights_relative_to_distance(distances);
+    if (!weights) {
+        for (auto arr : arrays) Py_DECREF(arr);
+        Py_DECREF(projected_times);
+        Py_DECREF(distances);
+        Py_DECREF(signatures);
+        Py_DECREF(patterns);
+        Py_DECREF(coordinates);
+        return NULL;
+    }
+    
+    // Copy data using parallel processing where beneficial
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(npy_intp j = 0; j < n_times; j++) {
+        for(npy_intp k = 0; k < sig_cols; k++) {
+            const long proj_time = proj_times_data[j];
+            sig_data[j * sig_cols + k] = smy_data[proj_time * sig_cols + k];
         }
-        
-        for(npy_intp k = 0; k < pat_dims[1]; k++) {
-            pat_data[j * pat_dims[1] + k] = psmy_data[proj_time * pat_dims[1] + k];
+    }
+    
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(npy_intp j = 0; j < n_times; j++) {
+        for(npy_intp k = 0; k < pat_cols; k++) {
+            const long proj_time = proj_times_data[j];
+            pat_data[j * pat_cols + k] = psmy_data[proj_time * pat_cols + k];
         }
-        
-        for(npy_intp k = 0; k < coord_dims[1]; k++) {
-            coord_data[j * coord_dims[1] + k] = my_data[proj_time * coord_dims[1] + k];
+    }
+    
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(npy_intp j = 0; j < n_times; j++) {
+        for(npy_intp k = 0; k < coord_cols; k++) {
+            const long proj_time = proj_times_data[j];
+            coord_data[j * coord_cols + k] = my_data[proj_time * coord_cols + k];
         }
     }
     
     // Build return dictionary
     PyObject* return_dict = PyDict_New();
-    PyDict_SetItemString(return_dict, "i", PyLong_FromLong(i));
-    PyDict_SetItemString(return_dict, "times_projected", projected_times);
-    PyDict_SetItemString(return_dict, "dists", distances);
-    PyDict_SetItemString(return_dict, "weights", weights);
-    PyDict_SetItemString(return_dict, "signatures", signatures);
-    PyDict_SetItemString(return_dict, "patterns", patterns);
-    PyDict_SetItemString(return_dict, "coordinates", coordinates);
+    if (!return_dict) {
+        for (auto arr : arrays) Py_DECREF(arr);
+        Py_DECREF(projected_times);
+        Py_DECREF(distances);
+        Py_DECREF(weights);
+        Py_DECREF(signatures);
+        Py_DECREF(patterns);
+        Py_DECREF(coordinates);
+        return NULL;
+    }
     
-    // Cleanup
-    Py_DECREF(my_array);
-    Py_DECREF(dy_array);
-    Py_DECREF(smy_array);
-    Py_DECREF(psmy_array);
-    Py_DECREF(times_x_array);
+    // Set dictionary items
+    const char* keys[] = {"i", "times_projected", "dists", "weights", 
+                         "signatures", "patterns", "coordinates"};
+    PyObject* values[] = {PyLong_FromLong(i), projected_times, distances, 
+                         weights, signatures, patterns, coordinates};
+    
+    for (int j = 0; j < 7; j++) {
+        if (PyDict_SetItemString(return_dict, keys[j], values[j]) < 0) {
+            for (auto arr : arrays) Py_DECREF(arr);
+            for (auto val : values) Py_DECREF(val);
+            Py_DECREF(return_dict);
+            return NULL;
+        }
+        Py_DECREF(values[j]);
+    }
+    
+    // Cleanup input arrays
+    for (auto arr : arrays) {
+        Py_DECREF(arr);
+    }
     
     return return_dict;
 }

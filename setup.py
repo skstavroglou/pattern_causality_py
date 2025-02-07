@@ -27,6 +27,7 @@ extensions = [
             "pattern_causality/patternhashing.cpp",
         ],
         language="c++",
+        include_dirs=[np.get_include()],
         extra_compile_args=["-std=c++11"],
     ),
     Extension(

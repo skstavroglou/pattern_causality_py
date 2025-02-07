@@ -2,6 +2,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <cmath>
+#include <limits>
 
 // Include SIMD headers based on architecture
 #ifdef __ARM_NEON

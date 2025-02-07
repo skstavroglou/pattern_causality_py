@@ -17,8 +17,8 @@ from utils.natureOfCausality import natureOfCausality
 
 
 def pc_lightweight(
-    X: np.ndarray,
-    Y: np.ndarray,
+    X: Union[List, np.ndarray, pd.Series],
+    Y: Union[List, np.ndarray, pd.Series],
     E: int,
     tau: int,
     metric: str = "euclidean",
@@ -58,6 +58,13 @@ def pc_lightweight(
     NNSPAN = E + 1  # Minimum number of nearest neighbors
     CCSPAN = (E - 1) * tau  # Remove common coordinate NNs
     hashedpatterns = patternhashing(E)  # Generate hash patterns
+    
+    # Convert hashedpatterns to numpy array if it's not already
+    if not isinstance(hashedpatterns, np.ndarray):
+        hashedpatterns = np.array(hashedpatterns)
+
+    if hashedpatterns is None or len(hashedpatterns) == 0:
+        raise ValueError(f"Failed to generate hash patterns for E={E}")
 
     #####################################
     ### STEP 1: THE SHADOW ATTRACTORS ###
@@ -83,18 +90,32 @@ def pc_lightweight(
     FCP = fcp(E, tau, h, X)
 
     # Calculate main loop duration
-    al_loop_dur = range(FCP, len(X) - (E - 1) * tau - h)
+    # Note: We need to ensure we don't exceed array bounds when checking My[i + h]
+    # Changed to include all valid points by adjusting the FCP offset
+    al_loop_dur = range(FCP - 1, len(X) - (E - 1) * tau - h + 1)
 
     # Initialize causality matrix
+    # Important: Keep the full length of Y for the matrix
     predictedPCMatrix = databank("array", [3 ** (E - 1), 3 ** (E - 1), len(Y)])
 
     real_loop = None
 
+    # Process the main loop points
     for i in al_loop_dur:
+        # Add bounds check to prevent index out of bounds
+        if i + h >= len(My):
+            continue
+            
+        # Check if current point and future point are valid
         if not np.any(np.isnan(Mx[i, :])) and not np.any(np.isnan(My[i + h, :])):
+            # Get nearest neighbors
             NNx = pastNNs(CCSPAN, NNSPAN, Mx, Dx, SMx, PSMx, i, h)
-            if NNx and not np.any(np.isnan(NNx["dists"])):
+            
+            # Check if we have valid nearest neighbors
+            if NNx is not None and not np.any(np.isnan(NNx["dists"])):
+                # Check if future points of nearest neighbors are valid
                 if not np.any(np.isnan(Dy[i, NNx["times"] + h])):
+                    # Add to real_loop
                     if real_loop is None:
                         real_loop = i
                     else:
@@ -118,32 +139,114 @@ def pc_lightweight(
                         patternX=patternX,
                         signatureX=signatureX,
                     )
-                    predictedPCMatrix[
-                        hashedpatterns.index(patternX),
-                        hashedpatterns.index(predictedPatternY),
-                        i,
-                    ] = pc["predicted"]
+                    
+                    # Find indices using numpy where with tolerance
+                    tolerance = 1e-10  # Use a smaller tolerance for floating point comparisons
+                    
+                    # Convert patterns to float64 for consistent comparison
+                    hashedpatterns = np.array(hashedpatterns, dtype=np.float64)
+                    patternX_val = np.float64(patternX.item())
+                    predictedPatternY_val = np.float64(predictedPatternY)
+                    
+                    # Find matches using absolute tolerance
+                    patternX_matches = np.where(np.abs(hashedpatterns - patternX_val) < tolerance)[0]
+                    predictedPatternY_matches = np.where(np.abs(hashedpatterns - predictedPatternY_val) < tolerance)[0]
+                    
+                    if len(patternX_matches) == 0:
+                        # Try to find closest match
+                        closest_idx = np.argmin(np.abs(hashedpatterns - patternX_val))
+                        closest_val = hashedpatterns[closest_idx]
+                        raise ValueError(
+                            f"Pattern X value {patternX_val} not found in hashedpatterns.\n"
+                            f"This suggests a mismatch in pattern generation between R and C++."
+                        )
+                    if len(predictedPatternY_matches) == 0:
+                        # Try to find closest match
+                        closest_idx = np.argmin(np.abs(hashedpatterns - predictedPatternY_val))
+                        closest_val = hashedpatterns[closest_idx]
+                        raise ValueError(
+                            f"Pattern Y value {predictedPatternY_val} not found in hashedpatterns.\n"
+                            f"This suggests a mismatch in pattern generation between R and C++."
+                        )
+                    
+                    patternX_idx = patternX_matches[0]
+                    predictedPatternY_idx = predictedPatternY_matches[0]
+                    predictedPCMatrix[patternX_idx, predictedPatternY_idx, i] = pc["predicted"]
 
     # Calculate causality metrics
     causality = natureOfCausality(
         predictedPCMatrix, real_loop, hashedpatterns, X, weighted
     )
 
+    # Debug information
+    print("\nDebug Information:")
+    print("1. Raw causality values:")
+    print("No Causality:", causality["noCausality"])
+    print("Positive:", causality["Positive"])
+    print("Negative:", causality["Negative"])
+    print("Dark:", causality["Dark"])
+    print("\n2. Real loop indices:", real_loop)
+
     # Calculate percentages, handling NA values
     totalCausPercent = 1 - np.nanmean(causality["noCausality"])
+    print("\n3. Total Causality calculation:")
+    print("Mean of noCausality:", np.nanmean(causality["noCausality"]))
+    print("Total Causality Percent:", totalCausPercent)
 
     # For the other metrics, only consider cases where noCausality != 1
     mask = causality["noCausality"][real_loop] != 1
-    posiCausPercent = np.nanmean(causality["Positive"][real_loop][mask])
-    negaCausPercent = np.nanmean(causality["Negative"][real_loop][mask])
-    darkCausPercent = np.nanmean(causality["Dark"][real_loop][mask])
+    print("\n4. Mask information:")
+    print("Number of valid cases:", np.sum(mask))
+    
+    if np.any(mask):  # Only calculate if we have valid cases
+        valid_indices = real_loop[mask]
+        print("\n5. Valid indices:", valid_indices)
+        
+        # Calculate percentages only for valid cases
+        valid_pos = causality["Positive"][valid_indices]
+        valid_neg = causality["Negative"][valid_indices]
+        valid_dark = causality["Dark"][valid_indices]
+        
+        print("\n6. Valid values before NaN removal:")
+        print("Positive:", valid_pos)
+        print("Negative:", valid_neg)
+        print("Dark:", valid_dark)
+        
+        # Remove NaN values before calculating mean
+        valid_pos = valid_pos[~np.isnan(valid_pos)]
+        valid_neg = valid_neg[~np.isnan(valid_neg)]
+        valid_dark = valid_dark[~np.isnan(valid_dark)]
+        
+        print("\n7. Valid values after NaN removal:")
+        print("Positive:", valid_pos)
+        print("Negative:", valid_neg)
+        print("Dark:", valid_dark)
+        
+        # Calculate means
+        posiCausPercent = np.mean(valid_pos) if len(valid_pos) > 0 else 0.0
+        negaCausPercent = np.mean(valid_neg) if len(valid_neg) > 0 else 0.0
+        darkCausPercent = np.mean(valid_dark) if len(valid_dark) > 0 else 0.0
+        
+        print("\n8. Initial percentages:")
+        print("Positive:", posiCausPercent)
+        print("Negative:", negaCausPercent)
+        print("Dark:", darkCausPercent)
 
-    if weighted:
-        total = posiCausPercent + negaCausPercent + darkCausPercent
-        if total > 0:
-            posiCausPercent = posiCausPercent / total
-            negaCausPercent = negaCausPercent / total
-            darkCausPercent = darkCausPercent / total
+        if weighted:
+            total = posiCausPercent + negaCausPercent + darkCausPercent
+            if total > 0:
+                posiCausPercent = posiCausPercent / total
+                negaCausPercent = negaCausPercent / total
+                darkCausPercent = darkCausPercent / total
+                print("\n9. Weighted percentages:")
+                print("Positive:", posiCausPercent)
+                print("Negative:", negaCausPercent)
+                print("Dark:", darkCausPercent)
+    else:  # If no valid cases, set all to 0
+        posiCausPercent = 0.0
+        negaCausPercent = 0.0
+        darkCausPercent = 0.0
+        print("\n5. No valid cases found, setting all percentages to 0")
 
     # Create a DataFrame with the causality results
     results_df = pd.DataFrame(
