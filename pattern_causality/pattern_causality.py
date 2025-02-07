@@ -178,59 +178,29 @@ def pc_lightweight(
         predictedPCMatrix, real_loop, hashedpatterns, X, weighted
     )
 
-    # Debug information
-    print("\nDebug Information:")
-    print("1. Raw causality values:")
-    print("No Causality:", causality["noCausality"])
-    print("Positive:", causality["Positive"])
-    print("Negative:", causality["Negative"])
-    print("Dark:", causality["Dark"])
-    print("\n2. Real loop indices:", real_loop)
-
     # Calculate percentages, handling NA values
     totalCausPercent = 1 - np.nanmean(causality["noCausality"])
-    print("\n3. Total Causality calculation:")
-    print("Mean of noCausality:", np.nanmean(causality["noCausality"]))
-    print("Total Causality Percent:", totalCausPercent)
 
     # For the other metrics, only consider cases where noCausality != 1
     mask = causality["noCausality"][real_loop] != 1
-    print("\n4. Mask information:")
-    print("Number of valid cases:", np.sum(mask))
     
     if np.any(mask):  # Only calculate if we have valid cases
         valid_indices = real_loop[mask]
-        print("\n5. Valid indices:", valid_indices)
         
         # Calculate percentages only for valid cases
         valid_pos = causality["Positive"][valid_indices]
         valid_neg = causality["Negative"][valid_indices]
         valid_dark = causality["Dark"][valid_indices]
         
-        print("\n6. Valid values before NaN removal:")
-        print("Positive:", valid_pos)
-        print("Negative:", valid_neg)
-        print("Dark:", valid_dark)
-        
         # Remove NaN values before calculating mean
         valid_pos = valid_pos[~np.isnan(valid_pos)]
         valid_neg = valid_neg[~np.isnan(valid_neg)]
         valid_dark = valid_dark[~np.isnan(valid_dark)]
         
-        print("\n7. Valid values after NaN removal:")
-        print("Positive:", valid_pos)
-        print("Negative:", valid_neg)
-        print("Dark:", valid_dark)
-        
         # Calculate means
         posiCausPercent = np.mean(valid_pos) if len(valid_pos) > 0 else 0.0
         negaCausPercent = np.mean(valid_neg) if len(valid_neg) > 0 else 0.0
         darkCausPercent = np.mean(valid_dark) if len(valid_dark) > 0 else 0.0
-        
-        print("\n8. Initial percentages:")
-        print("Positive:", posiCausPercent)
-        print("Negative:", negaCausPercent)
-        print("Dark:", darkCausPercent)
 
         if weighted:
             total = posiCausPercent + negaCausPercent + darkCausPercent
@@ -238,15 +208,10 @@ def pc_lightweight(
                 posiCausPercent = posiCausPercent / total
                 negaCausPercent = negaCausPercent / total
                 darkCausPercent = darkCausPercent / total
-                print("\n9. Weighted percentages:")
-                print("Positive:", posiCausPercent)
-                print("Negative:", negaCausPercent)
-                print("Dark:", darkCausPercent)
     else:  # If no valid cases, set all to 0
         posiCausPercent = 0.0
         negaCausPercent = 0.0
         darkCausPercent = 0.0
-        print("\n5. No valid cases found, setting all percentages to 0")
 
     # Create a DataFrame with the causality results
     results_df = pd.DataFrame(
