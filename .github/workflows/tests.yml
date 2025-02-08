@@ -34,6 +34,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y g++ python3-dev libomp-dev build-essential
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install numpy pandas
+        python -m pip install pytest pytest-cov
         
     - name: Set up compiler environment
       run: |
@@ -45,12 +51,6 @@ jobs:
         echo "NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION" >> $GITHUB_ENV
         echo "CC=gcc" >> $GITHUB_ENV
         echo "CXX=g++" >> $GITHUB_ENV
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        python -m pip install numpy pandas
-        python -m pip install pytest pytest-cov
     
     - name: Create package structure
       run: |
@@ -86,12 +86,15 @@ jobs:
       run: |
         python -m pip install -v -e .
     
-    - name: List directory structure
+    - name: List directory structure and environment
       run: |
         echo "Current directory structure:"
         find . -type f -name "*.py" -o -name "*.cpp"
         echo "Environment variables:"
         env | grep -E "CFLAGS|CXXFLAGS|LDFLAGS|NPY|CC|CXX"
+        echo "Python and package information:"
+        python --version
+        pip list
     
     - name: Run tests
       run: |

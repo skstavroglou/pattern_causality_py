@@ -26,6 +26,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++ python3-dev libomp-dev build-essential
           
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install numpy pandas
+          python -m pip install black isort flake8 mypy typing-extensions
+          python -m pip install build
+          
       - name: Set up compiler environment
         run: |
           python_include=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
@@ -46,13 +53,6 @@ jobs:
           touch pattern_causality/utils/__init__.py
           touch pattern_causality/cpp/__init__.py
           touch utils/__init__.py
-          
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install numpy pandas
-          python -m pip install black isort flake8 mypy typing-extensions
-          python -m pip install build
           
       - name: Build package
         run: |
