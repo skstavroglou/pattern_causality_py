@@ -33,24 +33,30 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y g++ python3-dev libomp-dev
+        sudo apt-get install -y g++ python3-dev libomp-dev build-essential
         
     - name: Set up compiler environment
       run: |
-        echo "CFLAGS=-I$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')" >> $GITHUB_ENV
-        echo "CXXFLAGS=-I$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))') -fopenmp -std=c++11" >> $GITHUB_ENV
+        python_include=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
+        numpy_include=$(python3 -c 'import numpy; print(numpy.get_include())')
+        echo "CFLAGS=-I${python_include} -I${numpy_include}" >> $GITHUB_ENV
+        echo "CXXFLAGS=-I${python_include} -I${numpy_include} -fopenmp -std=c++11 -O3 -Wall -fPIC" >> $GITHUB_ENV
         echo "LDFLAGS=-fopenmp" >> $GITHUB_ENV
         echo "NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION" >> $GITHUB_ENV
+        echo "CC=gcc" >> $GITHUB_ENV
+        echo "CXX=g++" >> $GITHUB_ENV
     
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install numpy pandas
+        python -m pip install pytest pytest-cov
     
     - name: Create package structure
       run: |
         mkdir -p utils
         mkdir -p pattern_causality/utils
+        mkdir -p pattern_causality/cpp
         
         cat > utils/__init__.py << 'EOL'
         from .statespace import statespace
@@ -74,16 +80,18 @@ jobs:
         EOL
         
         touch pattern_causality/utils/__init__.py
+        touch pattern_causality/cpp/__init__.py
     
     - name: Install package
       run: |
-        pip install pytest pytest-cov
-        python -m pip install -e .
+        python -m pip install -v -e .
     
     - name: List directory structure
       run: |
         echo "Current directory structure:"
         find . -type f -name "*.py" -o -name "*.cpp"
+        echo "Environment variables:"
+        env | grep -E "CFLAGS|CXXFLAGS|LDFLAGS|NPY|CC|CXX"
     
     - name: Run tests
       run: |
