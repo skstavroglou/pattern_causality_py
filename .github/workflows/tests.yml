@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
@@ -34,12 +36,20 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y g++ python3-dev libomp-dev build-essential
+        # Print system information
+        echo "System information:"
+        uname -a
+        g++ --version
+        python3 --version
     
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install numpy pandas
         python -m pip install pytest pytest-cov
+        # Print installed packages
+        echo "Installed Python packages:"
+        pip list
         
     - name: Set up compiler environment
       run: |
@@ -58,12 +68,13 @@ jobs:
         # Print environment for debugging
         echo "Python include path: ${PYTHON_INCLUDE}"
         echo "NumPy include path: ${NUMPY_INCLUDE}"
+        echo "Checking if include directories exist:"
+        ls -la ${PYTHON_INCLUDE} || echo "Python include directory not found"
+        ls -la ${NUMPY_INCLUDE} || echo "NumPy include directory not found"
     
     - name: Create package structure
       run: |
-        mkdir -p utils
-        mkdir -p pattern_causality/utils
-        mkdir -p pattern_causality/cpp
+        mkdir -p utils pattern_causality/utils pattern_causality/cpp
         
         cat > utils/__init__.py << 'EOL'
         from .statespace import statespace
@@ -88,9 +99,13 @@ jobs:
         
         touch pattern_causality/utils/__init__.py
         touch pattern_causality/cpp/__init__.py
+        
+        echo "Package structure created:"
+        find . -type d
     
     - name: Install package
       run: |
+        echo "Building package in verbose mode..."
         python -m pip install -v -e .
     
     - name: List directory structure and environment
@@ -102,13 +117,17 @@ jobs:
         echo "Python and package information:"
         python --version
         pip list
+        echo "C++ source files:"
         ls -la pattern_causality/cpp/
     
     - name: Run tests
       run: |
+        echo "Running tests with coverage..."
         python -m pytest tests/ --cov=pattern_causality -v
     
     - name: Upload coverage reports
+      if: success()
       uses: codecov/codecov-action@v3
       with:
         fail_ci_if_error: false
+        verbose: true
