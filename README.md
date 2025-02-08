@@ -1,13 +1,12 @@
 # pattern_causality_py
 
-[![PyPI version](https://img.shields.io/pypi/v/pattern-causality.svg)](https://badge.fury.io/py/pattern-causality)
-[![Downloads](https://pepy.tech/badge/pattern-causality)](https://pepy.tech/project/pattern-causality)
+[![PyPI version](https://badge.fury.io/py/pattern-causality.svg)](https://badge.fury.io/py/pattern-causality)
+[![PyPI Downloads](https://static.pepy.tech/badge/pattern-causality)](https://pepy.tech/project/pattern-causality)
 [![Tests](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](https://github.com/skstavroglou/pattern_causality_py)
-[![License](https://img.shields.io/pypi/l/pattern-causality.svg)](https://github.com/skstavroglou/pattern_causality_py/blob/main/LICENSE)
+[![Lint](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/lint.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/lint.yml)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://www.python.org/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Python](https://img.shields.io/pypi/pyversions/pattern-causality.svg)](https://pypi.org/project/pattern-causality/)
-
 
 ## Overview
 
@@ -15,109 +14,83 @@
 
 ## Key Features
 
-- **Efficient Causality Detection**: Robust analysis of causal relationships between pairs of time series
-- **Parameter Optimization**: Automated identification of optimal embedding parameters
-- **Cross-validation Support**: Statistical validation of causality results
-- **Matrix Analysis**: Comprehensive computation of causality matrices for multiple time series
-- **Effect Analysis**: Sophisticated tools for analyzing causal effects in complex systems
+- **Efficient C++ Implementation**: Core algorithms implemented in C++ for maximum performance
+- **Comprehensive Analysis Tools**: 
+  - Basic pattern causality analysis
+  - Multivariate time series analysis
+  - Cross-validation capabilities
+  - Parameter optimization
+  - Effect metrics calculation
+- **Built-in Dataset**: Includes climate indices dataset for demonstration
+- **OpenMP Support**: Parallel processing for improved performance
+- **Extensive Testing**: Comprehensive test suite with high coverage
+
+## System Requirements
+
+- Python 3.8 or later
+- C++ compiler with C++11 support
+- OpenMP support (for parallel processing)
+- NumPy 1.19.0 or later
+- Pandas 1.0.0 or later
 
 ## Installation
 
-### Via pip (Recommended)
+### Prerequisites
+
+#### On Ubuntu/Debian:
 ```bash
-pip install pattern-causality
+sudo apt-get update
+sudo apt-get install -y g++ python3-dev libomp-dev build-essential
 ```
 
-### From Source
-For the latest development version:
+#### On macOS:
 ```bash
-pip install git+https://github.com/skstavroglou/pattern_causality_py.git
+brew install libomp
 ```
 
-## Usage Guide
+### Installing the Package
 
-### Loading Data
-The package includes a pre-processed climate indices dataset for demonstration:
+```bash
+# Install required Python packages
+python -m pip install numpy pandas
+
+# Install pattern-causality
+python -m pip install -e .
+```
+
+## Usage Examples
+
+### Basic Usage
 
 ```python
-from pattern_causality import load_data
+from pattern_causality import pattern_causality, load_data
 
 # Load the included climate indices dataset
 data = load_data()
-print("Available climate indices:", data.columns.tolist())
-```
 
-### Basic Causality Analysis
-Perform causality analysis between two time series:
+# Initialize pattern causality analyzer
+pc = pattern_causality(verbose=True)
 
-```python
-from pattern_causality import pc_lightweight
-
-# Prepare data
-data = load_data()
-X = data['NAO'].values  # North Atlantic Oscillation
-Y = data['AAO'].values  # Arctic Oscillation
-
-# Perform pattern causality analysis
-result = pc_lightweight(
-    X=X, 
-    Y=Y, 
+# Analyze causality between NAO and AAO indices
+result = pc.pc_lightweight(
+    X=data["NAO"].values,
+    Y=data["AAO"].values,
     E=3,          # embedding dimension
     tau=1,        # time delay
+    metric="euclidean",
     h=1,          # prediction horizon
-    metric="euclidean",  # distance metric
-    weighted=True        # use weighted causality
+    weighted=True # use weighted calculations
 )
-print("Causality Analysis Results:\n", result)
+
+print(result)
 ```
 
-The `weighted` parameter determines the causality strength calculation method:
-- `weighted=True`: Utilizes the error function (erf) to normalize causality strength
-- `weighted=False`: Uses binary causality strength (1 for presence, 0 for absence)
-
-### Parameter Optimization
-Identify optimal parameters for your dataset:
+### Multivariate Analysis
 
 ```python
-from pattern_causality import optimal_parameters_search
-
-data = load_data()
-result = optimal_parameters_search(
-    Emax=5,       # maximum embedding dimension
-    tau_max=5,    # maximum time delay
-    metric="euclidean",
-    dataset=data.drop(columns=['Date'])
-)
-print("Optimal Parameters:\n", result)
-```
-
-### Cross-Validation Analysis
-Validate causality results across different sample sizes:
-
-```python
-from pattern_causality import pc_cross_validation
-
-result = pc_cross_validation(
-    X=data['NAO'].values,
-    Y=data['AAO'].values,
-    E=3,
-    tau=1,
-    metric="euclidean",
-    h=1,
-    weighted=True,
-    numberset=[100, 200, 300, 400, 500]  # sample sizes
-)
-print("Cross-validation Results:\n", result)
-```
-
-### Multi-Series Analysis
-Analyze causality patterns across multiple time series:
-
-```python
-from pattern_causality import pc_matrix
-
-results = pc_matrix(
-    dataset=data.drop(columns=['Date']),
+# Analyze causality patterns across multiple variables
+matrix_result = pc.pc_matrix(
+    dataset=data.drop(columns=["Date"]),
     E=3,
     tau=1,
     metric="euclidean",
@@ -126,89 +99,107 @@ results = pc_matrix(
 )
 
 print("Pattern Causality Matrix Results:")
-print("Positive causality matrix:", results['positive'])
-print("Negative causality matrix:", results['negative'])
-print("Dark causality matrix:", results['dark'])
-print("Variable names:", results['items'])
+print(matrix_result)
 ```
 
-### Effect Analysis
-Analyze causal effects between time series:
+### Parameter Optimization
 
 ```python
-from pattern_causality import pc_matrix, pc_effect
+# Find optimal parameters
+optimal_params = pc.optimal_parameters_search(
+    Emax=5,
+    tau_max=3,
+    metric="euclidean",
+    h=1,
+    dataset=data.drop(columns=["Date"])
+)
 
-# Calculate causality matrix
-matrix_results = pc_matrix(
-    dataset=data.drop(columns=['Date']),
+print("Optimal Parameters:")
+print(optimal_params)
+```
+
+### Cross Validation
+
+```python
+# Perform cross-validation
+cv_results = pc.pc_cross_validation(
+    X=data["NAO"].values,
+    Y=data["AAO"].values,
     E=3,
     tau=1,
     metric="euclidean",
     h=1,
-    weighted=True
+    weighted=True,
+    numberset=[100, 200, 300]
 )
 
-# Analyze effects
-effects = pc_effect(matrix_results)
-print("Causal Effects Analysis:")
-print("Positive effects:", effects['positive'])
-print("Negative effects:", effects['negative'])
-print("Dark effects:", effects['dark'])
+print("Cross-validation Results:")
+print(cv_results)
 ```
 
-## Testing
+## Development
 
-The package includes comprehensive test coverage:
+### Setting Up Development Environment
+
+1. Clone the repository:
+```bash
+git clone https://github.com/skstavroglou/pattern_causality_py.git
+cd pattern_causality_py
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Unix/macOS
+# or
+.\venv\Scripts\activate  # On Windows
+```
+
+3. Install development dependencies:
+```bash
+python -m pip install -e ".[dev]"
+```
+
+### Running Tests
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-cov
-
-# Run tests
-python -m pytest tests/
-
-# Run tests with coverage report
-python -m pytest tests/ --cov=pattern_causality
+# Run tests with coverage
+python -m pytest tests/ --cov=pattern_causality -v
 ```
 
-Current test coverage: 79%
+### Code Style
+
+The project uses:
+- Black for code formatting
+- isort for import sorting
+- flake8 for linting
+- mypy for type checking
+
+To check code style:
+```bash
+black .
+isort .
+flake8 .
+mypy pattern_causality
+```
 
 ## Contributing
 
-We welcome contributions! Please follow these steps:
+Contributions are welcome! Please follow these steps:
+
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Submit a pull request
-
-For major changes, please open an issue first to discuss proposed modifications.
-
-## Development Setup
-
-1. Clone the repository
-2. Install development dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
-3. Run tests:
-   ```bash
-   pytest
-   ```
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run the test suite
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ## References
 
-- Stavroglou, S. K., Pantelous, A. A., Stanley, H. E., & Zuev, K. M.
-  (2019). Hidden interactions in financial markets. _Proceedings of the
-  National Academy of Sciences, 116(22)_, 10646-10651.
-
-- Stavroglou, S. K., Pantelous, A. A., Stanley, H. E., & Zuev, K. M.
-  (2020). Unveiling causal interactions in complex systems. _Proceedings
-  of the National Academy of Sciences, 117(14)_, 7599-7605.
-
-- Stavroglou, S. K., Ayyub, B. M., Kallinterakis, V., Pantelous, A. A.,
-  & Stanley, H. E. (2021). A novel causal risk‐based decision‐making
-  methodology: The case of coronavirus. _Risk Analysis, 41(5)_, 814-830.
+- Stavroglou, S. K., Pantelous, A. A., Stanley, H. E., & Zuev, K. M. (2019). Hidden interactions in financial markets. _Proceedings of the National Academy of Sciences, 116(22)_, 10646-10651.
+- Stavroglou, S. K., Pantelous, A. A., Stanley, H. E., & Zuev, K. M. (2020). Unveiling causal interactions in complex systems. _Proceedings of the National Academy of Sciences, 117(14)_, 7599-7605.
+- Stavroglou, S. K., Ayyub, B. M., Kallinterakis, V., Pantelous, A. A., & Stanley, H. E. (2021). A novel causal risk‐based decision‐making methodology: The case of coronavirus. _Risk Analysis, 41(5)_, 814-830.
 
 ## License
 
