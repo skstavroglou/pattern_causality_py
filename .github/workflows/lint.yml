@@ -20,7 +20,7 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', 'setup.py', 'pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-          
+            
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -28,9 +28,10 @@ jobs:
           
       - name: Set up compiler environment
         run: |
-          echo "CFLAGS=-I/usr/include/python3.8" >> $GITHUB_ENV
-          echo "CXXFLAGS=-I/usr/include/python3.8 -fopenmp" >> $GITHUB_ENV
+          echo "CFLAGS=-I$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')" >> $GITHUB_ENV
+          echo "CXXFLAGS=-I$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))') -fopenmp -std=c++11" >> $GITHUB_ENV
           echo "LDFLAGS=-fopenmp" >> $GITHUB_ENV
+          echo "NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION" >> $GITHUB_ENV
           
       - name: Create directories
         run: |
@@ -49,7 +50,7 @@ jobs:
           
       - name: Build package
         run: |
-          CFLAGS="-I/usr/include/python3.8" CXXFLAGS="-I/usr/include/python3.8 -fopenmp" LDFLAGS="-fopenmp" python -m pip install .
+          python -m pip install -e .
           
       - name: Format with Black
         run: |
