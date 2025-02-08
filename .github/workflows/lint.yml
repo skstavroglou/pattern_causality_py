@@ -13,6 +13,14 @@ jobs:
         with:
           python-version: "3.8"
           
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', 'setup.py', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+          
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -24,6 +32,7 @@ jobs:
           mkdir -p utils
           touch pattern_causality/__init__.py
           touch pattern_causality/utils/__init__.py
+          touch utils/__init__.py
           
       - name: Install Python dependencies
         run: |

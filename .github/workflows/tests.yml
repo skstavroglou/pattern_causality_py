@@ -11,15 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10"]
+        python-version: ["3.8", "3.9", "3.10"]
+      fail-fast: false
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', 'setup.py', 'pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
     
     - name: Install build dependencies
       run: |
@@ -69,3 +78,8 @@ jobs:
     - name: Run tests
       run: |
         python -m pytest tests/ --cov=pattern_causality -v
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        fail_ci_if_error: false

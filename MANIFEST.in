@@ -1,2 +1,35 @@
-include pattern_causality/data/*.csv
+include README.md
 include LICENSE
+include setup.py
+include requirements.txt
+include pyproject.toml
+
+# C++ source files
+recursive-include pattern_causality/cpp *.cpp
+recursive-include pattern_causality/cpp *.h
+recursive-include pattern_causality/cpp *.hpp
+
+# Data files
+recursive-include pattern_causality/data *.csv
+
+# Python source files
+recursive-include pattern_causality *.py
+
+# Include all header files
+recursive-include . *.h
+recursive-include . *.hpp
+
+# Exclude unnecessary files
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude *.so
+global-exclude *.dylib
+global-exclude .DS_Store
+global-exclude *.o
+global-exclude *.a
+global-exclude *.lib
+global-exclude *.dll
+global-exclude .git*
+global-exclude .vscode*
+global-exclude .idea*
+global-exclude *.egg-info

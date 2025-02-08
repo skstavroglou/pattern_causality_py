@@ -1,22 +1,5 @@
-"""Pattern Causality Analysis Package.
+"""C++ implementations of pattern causality functions."""
 
-This package provides tools for analyzing causal relationships in time series data.
-"""
-
-from importlib.metadata import version, metadata
-
-# Get package metadata
-__version__ = version("pattern-causality")
-__author__ = metadata("pattern-causality").get("Author")
-__email__ = metadata("pattern-causality").get("Author-email")
-__license__ = metadata("pattern-causality").get("License")
-__copyright__ = f"Copyright (c) 2024 {__author__}"
-
-# Import core classes
-from .pattern_causality import pattern_causality
-from .datasets import load_data, get_dataset_info
-
-# Import C++ extensions
 try:
     from utils.databank import databank
     from utils.distancematrix import distancematrix
@@ -35,9 +18,6 @@ except ImportError as e:
     warnings.warn(f"Failed to import C++ extensions: {str(e)}")
 
 __all__ = [
-    "pattern_causality",
-    "load_data",
-    "get_dataset_info",
     "databank",
     "distancematrix",
     "fcp",
@@ -50,4 +30,4 @@ __all__ = [
     "projectedNNs",
     "signaturespace",
     "statespace",
-]
+] 

@@ -1,19 +1,17 @@
 import unittest
 import numpy as np
-from utils import (
-    statespace,
-    patternhashing,
-    signaturespace,
-    distancematrix,
-    patternspace,
-    pastNNs,
-    projectedNNs,
-    predictionY,
-    fillPCMatrix,
-    natureOfCausality,
-    databank,
-    fcp,
-)
+from utils.statespace import statespace
+from utils.patternhashing import patternhashing
+from utils.signaturespace import signaturespace
+from utils.distancematrix import distancematrix
+from utils.patternspace import patternspace
+from utils.pastNNs import pastNNs
+from utils.projectedNNs import projectedNNs
+from utils.predictionY import predictionY
+from utils.fillPCMatrix import fillPCMatrix
+from utils.natureOfCausality import natureOfCausality
+from utils.databank import databank
+from utils.fcp import fcp
 
 
 class TestUtils(unittest.TestCase):
@@ -25,8 +23,6 @@ class TestUtils(unittest.TestCase):
 
     def test_statespace(self):
         """Test state space creation"""
-        from utils.statespace import statespace
-
         result = statespace(self.time_series.tolist(), self.E, self.tau)
         self.assertIsInstance(result, np.ndarray)
         expected_shape = (len(self.time_series) - (self.E - 1) * self.tau, self.E)
@@ -34,17 +30,12 @@ class TestUtils(unittest.TestCase):
 
     def test_patternhashing(self):
         """Test pattern hashing"""
-        from utils.patternhashing import patternhashing
-
         result = patternhashing(self.E)
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 3 ** (self.E - 1))
+        self.assertIsInstance(result, np.ndarray)
+        self.assertEqual(len(result), self.E ** 2)
 
     def test_distance_matrix(self):
         """Test distance matrix calculation"""
-        from utils.distancematrix import distancematrix
-        from utils.statespace import statespace
-
         state_space = statespace(self.time_series.tolist(), self.E, self.tau)
         result = distancematrix(state_space, metric="euclidean")
         self.assertIsInstance(result, np.ndarray)
@@ -52,11 +43,26 @@ class TestUtils(unittest.TestCase):
 
     def test_fcp(self):
         """Test first causality point calculation"""
-        from utils.fcp import fcp
-
         result = fcp(self.E, self.tau, 1, self.time_series.tolist())
         self.assertIsInstance(result, int)
         self.assertGreater(result, 0)
+
+    def test_databank(self):
+        """Test databank functionality"""
+        # Test vector creation
+        vector = databank("vector", [5])
+        self.assertIsInstance(vector, np.ndarray)
+        self.assertEqual(vector.shape, (5,))
+
+        # Test matrix creation
+        matrix = databank("matrix", [3, 3])
+        self.assertIsInstance(matrix, np.ndarray)
+        self.assertEqual(matrix.shape, (3, 3))
+
+        # Test array creation
+        array = databank("array", [2, 2, 2])
+        self.assertIsInstance(array, np.ndarray)
+        self.assertEqual(array.shape, (2, 2, 2))
 
 
 if __name__ == "__main__":
