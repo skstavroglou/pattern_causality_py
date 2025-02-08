@@ -43,14 +43,21 @@ jobs:
         
     - name: Set up compiler environment
       run: |
-        python_include=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
-        numpy_include=$(python3 -c 'import numpy; print(numpy.get_include())')
-        echo "CFLAGS=-I${python_include} -I${numpy_include}" >> $GITHUB_ENV
-        echo "CXXFLAGS=-I${python_include} -I${numpy_include} -fopenmp -std=c++11 -O3 -Wall -fPIC" >> $GITHUB_ENV
+        # Get Python and NumPy include paths
+        PYTHON_INCLUDE=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
+        NUMPY_INCLUDE=$(python3 -c 'import numpy; print(numpy.get_include())')
+        
+        # Set up environment variables
+        echo "CFLAGS=-I${PYTHON_INCLUDE} -I${NUMPY_INCLUDE} -O3" >> $GITHUB_ENV
+        echo "CXXFLAGS=-I${PYTHON_INCLUDE} -I${NUMPY_INCLUDE} -std=c++11 -fopenmp -O3 -Wall -fPIC" >> $GITHUB_ENV
         echo "LDFLAGS=-fopenmp" >> $GITHUB_ENV
         echo "NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION" >> $GITHUB_ENV
         echo "CC=gcc" >> $GITHUB_ENV
         echo "CXX=g++" >> $GITHUB_ENV
+        
+        # Print environment for debugging
+        echo "Python include path: ${PYTHON_INCLUDE}"
+        echo "NumPy include path: ${NUMPY_INCLUDE}"
     
     - name: Create package structure
       run: |
@@ -95,6 +102,7 @@ jobs:
         echo "Python and package information:"
         python --version
         pip list
+        ls -la pattern_causality/cpp/
     
     - name: Run tests
       run: |

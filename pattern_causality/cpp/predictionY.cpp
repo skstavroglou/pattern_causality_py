@@ -4,10 +4,11 @@
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <array>
 
 // Pre-compute factorials for common cases
 static constexpr size_t MAX_FACTORIAL_CACHE = 10;
-static std::array<int, MAX_FACTORIAL_CACHE> factorial_cache = []() {
+static const std::array<int, MAX_FACTORIAL_CACHE> factorial_cache = []() {
     std::array<int, MAX_FACTORIAL_CACHE> cache{};
     cache[0] = 1;
     for(size_t i = 1; i < MAX_FACTORIAL_CACHE; ++i) {
@@ -45,8 +46,8 @@ thread_local std::vector<int> p_vec_buffer;
 
 static inline int pattern_vector_difference(const std::vector<double>& sVec) {
     // Quick check for NaN values
-    for (const auto& val : sVec) {
-        if (std::isnan(val)) {
+    for (size_t i = 0; i < sVec.size(); ++i) {
+        if (std::isnan(sVec[i])) {
             return 0;
         }
     }
@@ -57,10 +58,9 @@ static inline int pattern_vector_difference(const std::vector<double>& sVec) {
     }
     p_vec_buffer.clear();
     
-    // Vectorized pattern calculation
-    #pragma omp simd
-    for (const auto& val : sVec) {
-        p_vec_buffer.push_back(val > 0 ? 3 : (val < 0 ? 1 : 2));
+    // Convert to pattern values
+    for (size_t i = 0; i < sVec.size(); ++i) {
+        p_vec_buffer.push_back(sVec[i] > 0 ? 3 : (sVec[i] < 0 ? 1 : 2));
     }
     
     return hashing(p_vec_buffer);
@@ -71,9 +71,15 @@ static PyObject* predictionY(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* projNNy;
     PyObject* zeroTolerance_obj = Py_None;
     
-    static char* kwlist[] = {"E", "projNNy", "zeroTolerance", NULL};
+    // Use char* instead of const char* for PyArg_ParseTupleAndKeywords compatibility
+    static char* const_cast_kwlist[] = {
+        const_cast<char*>("E"),
+        const_cast<char*>("projNNy"),
+        const_cast<char*>("zeroTolerance"),
+        nullptr
+    };
     
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "lO|O", kwlist, 
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "lO|O", const_cast_kwlist, 
                                     &E, &projNNy, &zeroTolerance_obj)) {
         return NULL;
     }
