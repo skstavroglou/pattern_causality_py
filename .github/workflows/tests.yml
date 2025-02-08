@@ -30,12 +30,21 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
     
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ python3-dev libomp-dev
+        
+    - name: Set up compiler environment
+      run: |
+        echo "CFLAGS=-I/usr/include/python${{ matrix.python-version }}" >> $GITHUB_ENV
+        echo "CXXFLAGS=-I/usr/include/python${{ matrix.python-version }} -fopenmp" >> $GITHUB_ENV
+        echo "LDFLAGS=-fopenmp" >> $GITHUB_ENV
+    
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install numpy pandas setuptools wheel
-        sudo apt-get update
-        sudo apt-get install -y g++
     
     - name: Create package structure
       run: |
@@ -68,7 +77,7 @@ jobs:
     - name: Install package
       run: |
         pip install pytest pytest-cov
-        pip install -e .
+        CFLAGS="-I/usr/include/python${{ matrix.python-version }}" CXXFLAGS="-I/usr/include/python${{ matrix.python-version }} -fopenmp" LDFLAGS="-fopenmp" pip install -e .
     
     - name: List directory structure
       run: |
