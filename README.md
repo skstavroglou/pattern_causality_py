@@ -33,9 +33,27 @@
 - NumPy 1.19.0 or later
 - Pandas 1.0.0 or later
 
+## Changelog
+
+### Version 1.0.1 (2024-02-14)
+- Fixed type conversion issue in natureOfCausality function
+- Improved compatibility with different system architectures by using np.long type
+- Enhanced stability for array data type handling
+
 ## Installation
 
-### Prerequisites
+### Via pip (Recommended)
+```bash
+pip install pattern-causality
+```
+
+### Via pip + git
+```bash
+pip install git+https://github.com/skstavroglou/pattern_causality_py.git
+```
+
+### From Source
+#### Prerequisites
 
 #### On Ubuntu/Debian:
 ```bash

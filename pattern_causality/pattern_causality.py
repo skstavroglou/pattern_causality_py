@@ -371,6 +371,8 @@ class pattern_causality:
         
         # Calculate causality metrics
         self._print_if_verbose("Calculating final causality metrics...", verbose)
+        # Convert real_loop to long type to match C++ NPY_LONG
+        real_loop = np.array(real_loop, dtype=np.long)
         causality = natureOfCausality(predictedPCMatrix, real_loop, hashedpatterns, X, weighted)
         
         # Calculate percentages

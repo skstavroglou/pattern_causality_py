@@ -6,10 +6,10 @@
 #include <cmath>
 #include <limits>
 
-// 预分配的缓冲区大小
+// Pre-allocated buffer size
 constexpr size_t INITIAL_BUFFER_SIZE = 1024;
 
-// 重用的缓冲区
+// Reusable buffer
 static std::vector<std::pair<double, int>> candidate_buffer;
 static std::vector<int> nn_indices_buffer;
 static std::vector<double> dists_buffer;
