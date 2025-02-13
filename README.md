@@ -35,7 +35,7 @@
 
 ## Changelog
 
-### Version 1.0.1 (2024-02-14)
+### Version 1.0.1 (2025-02-14)
 - Fixed type conversion issue in natureOfCausality function
 - Improved compatibility with different system architectures by using np.int_
 - Enhanced stability for array data type handling
