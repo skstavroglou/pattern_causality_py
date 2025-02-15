@@ -35,6 +35,11 @@
 
 ## Changelog
 
+### Version 1.0.3 (2024-02-15)
+- Fixed integer type conversion issue in natureOfCausality function for Windows compatibility
+- Improved type handling for array data in pattern causality calculations
+- Enhanced cross-platform compatibility for integer types
+
 ### Version 1.0.2 (2024-02-15)
 - Changed default behavior to use relative differences (relative=True by default)
 - Added relative parameter to signaturespace for choosing between relative and absolute differences

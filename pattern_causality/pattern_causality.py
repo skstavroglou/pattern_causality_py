@@ -374,7 +374,8 @@ class pattern_causality:
         # Calculate causality metrics
         self._print_if_verbose("Calculating final causality metrics...", verbose)
         # Convert real_loop to integer type compatible with C++ NPY_LONG
-        real_loop = np.array(real_loop, dtype=np.int_)
+        if real_loop is not None:
+            real_loop = np.asarray(real_loop, dtype=np.int32)
         causality = natureOfCausality(predictedPCMatrix, real_loop, hashedpatterns, X, weighted)
         
         # Calculate percentages
@@ -1077,7 +1078,7 @@ class pattern_causality:
             'Positive Causality': [np.sum(~np.isnan(result_df['Positive Causality']) & (result_df['Positive Causality'] > 0))],
             'Negative Causality': [np.sum(~np.isnan(result_df['Negative Causality']) & (result_df['Negative Causality'] > 0))],
             'Dark Causality': [np.sum(~np.isnan(result_df['Dark Causality']) & (result_df['Dark Causality'] > 0))]
-        }, index=['Total Points'])
+        })
         
         result_df = pd.concat([result_df, summary])
         
