@@ -235,6 +235,7 @@ class pattern_causality:
                       metric: str = "euclidean",
                       h: int = 1,
                       weighted: bool = False,
+                      relative: bool = True,
                       verbose: bool = None) -> pd.DataFrame:
         """
         Pattern Causality Lightweight implementation
@@ -247,6 +248,7 @@ class pattern_causality:
             metric: Distance metric to use
             h: Prediction horizon
             weighted: Whether to use weighted calculations
+            relative: Whether to use relative differences (default: False for absolute)
             verbose: Override class-level verbose setting
             
         Returns:
@@ -281,8 +283,8 @@ class pattern_causality:
         self._print_if_verbose("Calculating state space and signatures...", verbose)
         Mx = statespace(X, E, tau)
         My = statespace(Y, E, tau)
-        SMx = signaturespace(Mx, E)
-        SMy = signaturespace(My, E)
+        SMx = signaturespace(Mx, E, relative=relative)
+        SMy = signaturespace(My, E, relative=relative)
         PSMx = patternspace(SMx, E)
         PSMy = patternspace(SMy, E)
         Dx = distancematrix(Mx, metric=metric)
@@ -429,6 +431,7 @@ class pattern_causality:
                   metric: str = "euclidean",
                   h: int = 1,
                   weighted: bool = False,
+                  relative: bool = True,
                   verbose: bool = None) -> pd.DataFrame:
         """
         Calculate pattern causality matrix for multivariate time series
@@ -440,6 +443,7 @@ class pattern_causality:
             metric: Distance metric to use
             h: Prediction horizon
             weighted: Whether to use weighted calculations
+            relative: Whether to use relative differences (default: False for absolute)
             verbose: Override class-level verbose setting
             
         Returns:
@@ -493,6 +497,7 @@ class pattern_causality:
                                 metric=metric,
                                 h=h,
                                 weighted=weighted,
+                                relative=relative,
                                 verbose=False
                             )
                             
@@ -697,7 +702,8 @@ class pattern_causality:
                    tau: int,
                    metric: str,
                    h: int,
-                   weighted: bool) -> pd.DataFrame:
+                   weighted: bool,
+                   relative: bool = True) -> pd.DataFrame:
         """
         Calculate pattern causality accuracy metrics for a dataset.
 
@@ -708,6 +714,7 @@ class pattern_causality:
             metric: Distance metric to use
             h: Prediction horizon
             weighted: Whether to use weighted calculations
+            relative: Whether to use relative differences (default: False for absolute)
 
         Returns:
             pd.DataFrame: Accuracy metrics with shape (1, 6)
@@ -733,7 +740,7 @@ class pattern_causality:
                     if fcp(E, tau, h, X_list) and fcp(E, tau, h, Y_list):
                         # Calculate pattern causality
                         results = self.pc_lightweight(
-                            X_list, Y_list, E, tau, metric, h, weighted
+                            X_list, Y_list, E, tau, metric, h, weighted, relative
                         )
 
                         # Store results
@@ -760,6 +767,7 @@ class pattern_causality:
                                 metric: str = "euclidean",
                                 h: int = 1,
                                 weighted: bool = False,
+                                relative: bool = True,
                                 dataset: Union[pd.DataFrame, np.ndarray, List] = None,
                                 verbose: bool = None) -> pd.DataFrame:
         """
@@ -771,6 +779,7 @@ class pattern_causality:
             metric: Distance metric to use
             h: Prediction horizon
             weighted: Whether to use weighted calculations
+            relative: Whether to use relative differences (default: False for absolute)
             dataset: Input dataset (DataFrame, numpy array, or list)
             verbose: Override class-level verbose setting
             
@@ -826,7 +835,8 @@ class pattern_causality:
                     tau=tau, 
                     metric=metric, 
                     h=h, 
-                    weighted=weighted
+                    weighted=weighted,
+                    relative=relative
                 )
 
                 # Store results
@@ -889,6 +899,7 @@ class pattern_causality:
                        metric: str = "euclidean",
                        h: int = 1,
                        weighted: bool = False,
+                       relative: bool = True,
                        verbose: bool = None) -> pd.DataFrame:
         """
         Pattern Causality Full Details implementation
@@ -900,7 +911,8 @@ class pattern_causality:
             tau: Time delay
             metric: Distance metric to use
             h: Prediction horizon
-            weighted: Whether to use weighted calculations (True for erf values, False for binary)
+            weighted: Whether to use weighted calculations
+            relative: Whether to use relative differences (default: False for absolute)
             verbose: Override class-level verbose setting
             
         Returns:
@@ -939,8 +951,8 @@ class pattern_causality:
         # Calculate shadow attractors
         Mx = statespace(X, E, tau)
         My = statespace(Y, E, tau)
-        SMx = signaturespace(Mx, E)
-        SMy = signaturespace(My, E)
+        SMx = signaturespace(Mx, E, relative=relative)
+        SMy = signaturespace(My, E, relative=relative)
         PSMx = patternspace(SMx, E)
         PSMy = patternspace(SMy, E)
         Dx = distancematrix(Mx, metric=metric)
@@ -1090,6 +1102,7 @@ class pattern_causality:
                           h: int,
                           weighted: bool,
                           numberset: Sequence[int],
+                          relative: bool = True,
                           verbose: bool = None) -> pd.DataFrame:
         """
         Perform cross validation for pattern causality analysis
@@ -1103,6 +1116,7 @@ class pattern_causality:
             h: Prediction horizon
             weighted: Whether to use weighted calculations
             numberset: Sequence of sample sizes to test
+            relative: Whether to use relative differences (default: False for absolute)
             verbose: Override class-level verbose setting
             
         Returns:
@@ -1155,6 +1169,7 @@ class pattern_causality:
                 metric=metric,
                 h=h,
                 weighted=weighted,
+                relative=relative,
                 verbose=False  # Suppress verbose output for individual calculations
             )
             

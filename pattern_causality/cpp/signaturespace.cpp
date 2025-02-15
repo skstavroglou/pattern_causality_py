@@ -61,16 +61,20 @@ static PyObject* signatureVectorDifference(PyObject* self, PyObject* args) {
     return (PyObject*)result_array;
 }
 
-static PyObject* signaturespace(PyObject* self, PyObject* args) {
+static PyObject* signaturespace(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* input_matrix;
     int E;
-    if (!PyArg_ParseTuple(args, "Oi", &input_matrix, &E)) {
+    int relative = 1;  // Default to relative (1 for true)
+    
+    static char* kwlist[] = {"input_matrix", "E", "relative", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|p", kwlist, 
+                                    &input_matrix, &E, &relative)) {
         return NULL;
     }
 
     // Validate parameters
     if (E < 2) {
-        PyErr_SetString(PyExc_ValueError, "E must be >= 2");
+        PyErr_SetString(PyExc_ValueError, "State space matrix must have at least 2 columns");
         return NULL;
     }
 
@@ -81,19 +85,20 @@ static PyObject* signaturespace(PyObject* self, PyObject* args) {
         NPY_ARRAY_IN_ARRAY
     );
     if (!array) {
+        PyErr_SetString(PyExc_ValueError, "Input must be a matrix");
         return NULL;
     }
 
     // Validate dimensions
     if (PyArray_NDIM(array) != 2) {
         Py_DECREF(array);
-        PyErr_SetString(PyExc_ValueError, "Input must be a 2D array");
+        PyErr_SetString(PyExc_ValueError, "Input must be a matrix");
         return NULL;
     }
 
     const npy_intp rows = PyArray_DIM(array, 0);
     const npy_intp cols = PyArray_DIM(array, 1);
-    const npy_intp output_cols = E - 1;
+    const npy_intp output_cols = cols - 1;
 
     // Handle empty input
     if (rows == 0) {
@@ -123,7 +128,14 @@ static PyObject* signaturespace(PyObject* self, PyObject* args) {
             if (std::isnan(input_row[j]) || std::isnan(input_row[j + 1])) {
                 output_row[j] = std::numeric_limits<double>::quiet_NaN();
             } else {
-                output_row[j] = input_row[j + 1] - input_row[j];
+                if (relative) {
+                    // Relative change: (new - old) / old
+                    // Exactly match R's behavior: no special handling for zero values
+                    output_row[j] = (input_row[j + 1] - input_row[j]) / input_row[j];
+                } else {
+                    // Absolute change: new - old
+                    output_row[j] = input_row[j + 1] - input_row[j];
+                }
             }
         }
     }
@@ -136,8 +148,12 @@ static PyObject* signaturespace(PyObject* self, PyObject* args) {
 static PyMethodDef SignatureSpaceMethods[] = {
     {"signatureVectorDifference", signatureVectorDifference, METH_VARARGS,
      "Calculate differences between successive elements using SIMD optimization"},
-    {"signaturespace", signaturespace, METH_VARARGS,
-     "Calculate signature space matrix with parallel processing and SIMD optimization"},
+    {"signaturespace", (PyCFunction)signaturespace, METH_VARARGS | METH_KEYWORDS,
+     "Calculate signature space matrix with parallel processing and SIMD optimization.\n"
+     "Args:\n"
+     "    input_matrix: Input 2D array\n"
+     "    E: Embedding dimension\n"
+     "    relative: If True, calculate relative differences (new-old)/old, otherwise absolute differences (new-old). Default is False."},
     {NULL, NULL, 0, NULL}
 };
 

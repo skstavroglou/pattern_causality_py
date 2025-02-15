@@ -5,7 +5,7 @@
 [![Tests](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/tests.yml)
 [![Lint](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/lint.yml/badge.svg)](https://github.com/skstavroglou/pattern_causality_py/actions/workflows/lint.yml)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-blue)](https://www.python.org/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ## Overview
@@ -35,7 +35,13 @@
 
 ## Changelog
 
-### Version 1.0.1 (2025-02-14)
+### Version 1.0.2 (2024-02-15)
+- Changed default behavior to use relative differences (relative=True by default)
+- Added relative parameter to signaturespace for choosing between relative and absolute differences
+- Enhanced documentation for the new parameter
+- Improved backward compatibility with absolute difference mode (relative=False)
+
+### Version 1.0.1 (2024-02-14)
 - Fixed type conversion issue in natureOfCausality function
 - Improved compatibility with different system architectures by using np.int_
 - Enhanced stability for array data type handling
@@ -98,7 +104,8 @@ result = pc.pc_lightweight(
     tau=1,        # time delay
     metric="euclidean",
     h=1,          # prediction horizon
-    weighted=True # use weighted calculations
+    weighted=True, # use weighted calculations
+    relative=True  # use relative differences (default)
 )
 
 print(result)
@@ -114,7 +121,8 @@ matrix_result = pc.pc_matrix(
     tau=1,
     metric="euclidean",
     h=1,
-    weighted=True
+    weighted=True,
+    relative=True  # Using relative differences (default)
 )
 
 print("Pattern Causality Matrix Results:")
